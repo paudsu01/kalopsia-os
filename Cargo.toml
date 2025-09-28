@@ -3,4 +3,17 @@ name = "kalopsia-os"
 version = "0.1.0"
 edition = "2024"
 
+# Disable stack unwinding on panic for `dev` and `release`
+[profile.dev]
+panic="abort"
+
+[profile.release]
+panic="abort"
+
+# Binary doesn't support builds in test and bench modes
+[[bin]]
+name = "kalopsia-os"
+test = false
+bench = false
+
 [dependencies]
