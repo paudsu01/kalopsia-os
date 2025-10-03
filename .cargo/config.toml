@@ -1,0 +1,9 @@
+# Default target specification
+[build]
+target = "kalopsia-os-x86-64.json"
+
+# Recompile the `core` library which contains Rust types such as `Result`, `Option`, etc. because of the `no_std` use
+[unstable]
+build-std-features = ["compiler-builtins-mem"]
+build-std = ["core", "compiler_builtins"]
+

@@ -10,13 +10,10 @@
     "linker-flavor": "ld.lld",
     "linker": "rust-lld",
     
-    "_comment_1": "// Disable stack unwinding on panic",
     "panic-strategy": "abort",
 
-    "_comment_2": "// Disable redzone optimization because the hardware can overwrite the data in the red zone during interrupts",
     "disable-redzone": true,
 
-    "_comment_3": "// Emulate floating point operations because SIMD registers are large -> perfomance problems",
     "features": "-mmx,-sse,+soft-float",
     "rustc-abi": "x86-softfloat"
 }

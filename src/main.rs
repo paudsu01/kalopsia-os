@@ -16,5 +16,16 @@ pub fn panic(_info: &PanicInfo) -> ! {
  */
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
+    // VGA buffer start address
+    let vga = 0xb8000 as *mut u8;
+
+    let hello_world: &[u8] = "HELLO WORLD!".as_bytes();
+    unsafe {
+        for (i, &byte) in hello_world.iter().enumerate() {
+            *(vga.offset(i as isize * 2)) = byte;
+            *(vga.offset(i as isize * 2 + 1)) = 0xa_u8;
+        }
+    }
+
     loop {}
 }
