@@ -19,6 +19,7 @@ enum TextColor {
     White = 0xf,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 struct ColorMode(u8);
 
@@ -40,8 +41,8 @@ struct VGABuffer {
     start_address: *mut VGAChar,
 }
 
-static VGA_ROWS: u16 = 25;
-static VGA_COLS: u16 = 80;
+const VGA_ROWS: u16 = 25;
+const VGA_COLS: u16 = 80;
 
 /*  The VGA buffer starts at addr 0xb8000
    The VGA buffer is a 2d-array with 25 rows and 80 columns
@@ -79,7 +80,10 @@ impl VGABuffer {
             return false;
         };
         unsafe {
-            *ptr = byte;
+            // write volatile guarantees that the write isn't optimized away
+            // which can happen because the compiler **thinks** the writes are unnecessary (because
+            // we don't access the modified memory)
+            core::ptr::write_volatile(ptr, byte);
         }
         true
     }

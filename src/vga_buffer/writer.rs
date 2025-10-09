@@ -52,5 +52,18 @@ impl VGAWriter {
         }
     }
 
-    pub fn write_str(&mut self, string: &str) {}
+    pub fn write_string(&mut self, string: &str) {
+        for byte in string.bytes() {
+            self.write_byte(byte);
+        }
+    }
+}
+
+// Implement `fmt::write` trait for writing or formatting into our buffer
+use core::fmt;
+impl fmt::Write for VGAWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
 }
