@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
-pub enum TextColor {
+enum TextColor {
     Black = 0x0,
     Blue = 0x1,
     Green = 0x2,
@@ -19,22 +19,24 @@ pub enum TextColor {
     White = 0xf,
 }
 
-pub struct ColorMode(u8);
+#[derive(Clone, Copy)]
+struct ColorMode(u8);
 
 impl ColorMode {
-    pub fn new(foreground: TextColor, background: TextColor, blink: bool) -> Self {
+    fn new(foreground: TextColor, background: TextColor, blink: bool) -> Self {
         let color_byte = ((background as u8) << 4) | (foreground as u8) | ((blink as u8) << 7);
         ColorMode(color_byte)
     }
 }
 
+#[derive(Clone, Copy)]
 #[repr(C)]
-pub struct VGAChar {
+struct VGAChar {
     pub byte: u8,
     pub color: ColorMode,
 }
 
-pub struct VGABuffer {
+struct VGABuffer {
     start_address: *mut VGAChar,
 }
 
@@ -51,7 +53,7 @@ static VGA_COLS: u16 = 80;
    For more details: https://wiki.osdev.org/Text_UI
 */
 impl VGABuffer {
-    pub fn new() -> Self {
+    fn new() -> Self {
         VGABuffer {
             start_address: (0xb8000 as *mut VGAChar),
         }
@@ -71,13 +73,42 @@ impl VGABuffer {
         }
     }
 
-    pub fn write_byte(&self, row: u16, col: u16, byte: VGAChar) {
+    fn write_byte(&self, row: u16, col: u16, byte: VGAChar) -> bool {
         let ptr = self.get_ptr(row, col);
         let Some(ptr) = ptr else {
-            return;
+            return false;
         };
         unsafe {
             *ptr = byte;
         }
+        true
+    }
+
+    fn move_rows_up(&self) {
+        for row in 1..VGA_ROWS {
+            for col in 0..VGA_COLS {
+                // `unwrap` will never fail here
+                let ptr = self.get_ptr(row, col).unwrap();
+                unsafe {
+                    self.write_byte(row - 1, col, *ptr);
+                }
+            }
+        }
+    }
+
+    fn clear_row(&self, row: u16) {
+        for col in 0..VGA_COLS {
+            self.write_byte(
+                row,
+                col,
+                VGAChar {
+                    byte: b' ',
+                    color: ColorMode::new(TextColor::Black, TextColor::Black, false),
+                },
+            );
+        }
     }
 }
+
+mod writer;
+pub use writer::VGAWriter;
