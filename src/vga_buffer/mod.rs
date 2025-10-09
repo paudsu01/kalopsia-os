@@ -33,8 +33,8 @@ impl ColorMode {
 #[derive(Clone, Copy)]
 #[repr(C)]
 struct VGAChar {
-    pub byte: u8,
-    pub color: ColorMode,
+    byte: u8,
+    color: ColorMode,
 }
 
 struct VGABuffer;
@@ -106,5 +106,5 @@ impl VGABuffer {
     }
 }
 
-pub mod writer;
-pub use writer::WRITER;
+mod writer;
+pub use writer::_print;

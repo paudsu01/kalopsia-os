@@ -3,7 +3,7 @@ use crate::vga_buffer::VGA_ROWS;
 use super::{ColorMode, TextColor, VGABuffer, VGAChar, VGA_COLS};
 
 #[allow(unused)]
-pub struct VGAWriter {
+struct VGAWriter {
     // No row since we are only going to be writing at the last row
     col: u16,
     color: ColorMode,
@@ -12,7 +12,7 @@ pub struct VGAWriter {
 
 #[allow(unused)]
 impl VGAWriter {
-    pub fn new() -> Self {
+    fn new() -> Self {
         VGAWriter {
             col: 0,
             color: ColorMode::new(TextColor::Green, TextColor::Black, false),
@@ -20,7 +20,7 @@ impl VGAWriter {
         }
     }
 
-    pub fn write_byte(&mut self, byte: u8) {
+    fn write_byte(&mut self, byte: u8) {
         if byte == b'\n' || self.col == VGA_COLS {
             self.buffer.move_rows_up();
             self.col = 0;
@@ -46,21 +46,21 @@ impl VGAWriter {
         self.col += 1;
     }
 
-    pub fn write_bytes(&mut self, bytes: &[u8]) {
+    fn write_bytes(&mut self, bytes: &[u8]) {
         for &byte in bytes {
             self.write_byte(byte);
         }
     }
 
-    pub fn write_string(&mut self, string: &str) {
+    fn write_string(&mut self, string: &str) {
         for byte in string.bytes() {
             self.write_byte(byte);
         }
     }
 }
 
-// Implement `fmt::write` trait for writing or formatting into our buffer
 use core::fmt;
+// Implement `fmt::write` trait for writing or formatting into our buffer
 impl fmt::Write for VGAWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
@@ -68,12 +68,30 @@ impl fmt::Write for VGAWriter {
     }
 }
 
-// lazy initialization of WRITER because statics require a const initializer, and VGAWriter::new() is a non-const function.
+// lazy initialization of VGA_WRITER because statics require a const initializer, and VGAWriter::new() is a non-const function.
 // We wrap it in a spin::Mutex to provide safe interior mutability in a single-threaded or
 // multi-threaded context
 use lazy_static::lazy_static;
 use spin::Mutex;
 
 lazy_static! {
-    pub static ref WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new());
+    static ref VGA_WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new());
+}
+// Macro defs for printing stuff to the screen
+// Used phil opp's macro defs: https://os.phil-opp.com/vga-text-mode/#a-println-macro
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    VGA_WRITER.lock().write_fmt(args).unwrap();
 }
