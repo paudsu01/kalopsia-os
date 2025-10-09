@@ -37,9 +37,7 @@ struct VGAChar {
     pub color: ColorMode,
 }
 
-struct VGABuffer {
-    start_address: *mut VGAChar,
-}
+struct VGABuffer;
 
 const VGA_ROWS: u16 = 25;
 const VGA_COLS: u16 = 80;
@@ -54,19 +52,13 @@ const VGA_COLS: u16 = 80;
    For more details: https://wiki.osdev.org/Text_UI
 */
 impl VGABuffer {
-    fn new() -> Self {
-        VGABuffer {
-            start_address: (0xb8000 as *mut VGAChar),
-        }
-    }
-
     fn get_ptr(&self, row: u16, col: u16) -> Option<*mut VGAChar> {
         if row >= VGA_ROWS || col >= VGA_COLS {
             None
         } else {
             let addr = unsafe {
                 // Get ptr to required row
-                let row_addr = self.start_address.offset((row * VGA_COLS) as isize);
+                let row_addr = (0xb8000 as *mut VGAChar).offset((row * VGA_COLS) as isize);
                 // Get ptr to required col offset in the row
                 row_addr.offset(col as isize)
             };
@@ -114,5 +106,5 @@ impl VGABuffer {
     }
 }
 
-mod writer;
-pub use writer::VGAWriter;
+pub mod writer;
+pub use writer::WRITER;

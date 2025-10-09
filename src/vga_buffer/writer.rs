@@ -16,7 +16,7 @@ impl VGAWriter {
         VGAWriter {
             col: 0,
             color: ColorMode::new(TextColor::Green, TextColor::Black, false),
-            buffer: VGABuffer::new(),
+            buffer: VGABuffer,
         }
     }
 
@@ -66,4 +66,14 @@ impl fmt::Write for VGAWriter {
         self.write_string(s);
         Ok(())
     }
+}
+
+// lazy initialization of WRITER because statics require a const initializer, and VGAWriter::new() is a non-const function.
+// We wrap it in a spin::Mutex to provide safe interior mutability in a single-threaded or
+// multi-threaded context
+use lazy_static::lazy_static;
+use spin::Mutex;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new());
 }
