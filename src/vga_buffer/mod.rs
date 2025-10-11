@@ -66,7 +66,7 @@ impl VGABuffer {
         }
     }
 
-    fn write_byte(&self, row: u16, col: u16, byte: VGAChar) -> bool {
+    fn write_char(&self, row: u16, col: u16, value: VGAChar) -> bool {
         let ptr = self.get_ptr(row, col);
         let Some(ptr) = ptr else {
             return false;
@@ -75,9 +75,16 @@ impl VGABuffer {
             // write volatile guarantees that the write isn't optimized away
             // which can happen because the compiler **thinks** the writes are unnecessary (because
             // we don't access the modified memory)
-            core::ptr::write_volatile(ptr, byte);
+            core::ptr::write_volatile(ptr, value);
         }
         true
+    }
+
+    #[allow(dead_code)]
+    fn read_char(&self, row: u16, col: u16) -> Option<u8> {
+        let ptr = self.get_ptr(row, col)?;
+        let value = unsafe { core::ptr::read_volatile(ptr as *const VGAChar) };
+        Some(value.byte)
     }
 
     fn move_rows_up(&self) {
@@ -86,7 +93,7 @@ impl VGABuffer {
                 // `unwrap` will never fail here
                 let ptr = self.get_ptr(row, col).unwrap();
                 unsafe {
-                    self.write_byte(row - 1, col, *ptr);
+                    self.write_char(row - 1, col, *ptr);
                 }
             }
         }
@@ -94,7 +101,7 @@ impl VGABuffer {
 
     fn clear_row(&self, row: u16) {
         for col in 0..VGA_COLS {
-            self.write_byte(
+            self.write_char(
                 row,
                 col,
                 VGAChar {

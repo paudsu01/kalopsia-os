@@ -40,7 +40,7 @@ impl VGAWriter {
             _ => 3,
         };
 
-        self.buffer.write_byte(
+        self.buffer.write_char(
             self.row,
             self.col,
             VGAChar {
@@ -100,3 +100,6 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     VGA_WRITER.lock().write_fmt(args).unwrap();
 }
+
+#[cfg(test)]
+mod writer_tests;

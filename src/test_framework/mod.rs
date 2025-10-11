@@ -8,7 +8,6 @@ pub fn custom_test_runner(tests: &[&dyn Fn()]) {
         test();
         println!("..ok");
     }
-    assert_eq!(0, 1);
     serial_println!("Completed all tests");
     exit_qemu(QEMUExitCode::Success);
 }
