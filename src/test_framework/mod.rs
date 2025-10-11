@@ -1,15 +1,27 @@
-use crate::{println, serial_println};
+use crate::{println, serial_print, serial_println};
 
 // Custom test framework setup: https://doc.rust-lang.org/beta/unstable-book/language-features/custom-test-frameworks.html
 // Reference: https://os.phil-opp.com/testing/
-pub fn custom_test_runner(tests: &[&dyn Fn()]) {
-    serial_println!("Running {} tests:", tests.len());
+pub fn custom_test_runner(tests: &[&dyn Testable]) {
+    serial_println!("\nRunning {} tests:\n", tests.len());
     for test in tests {
-        test();
+        test.run();
         println!("..ok");
     }
-    serial_println!("Completed all tests");
+    serial_println!("\nCompleted all tests");
     exit_qemu(QEMUExitCode::Success);
+}
+
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+impl<T: Fn()> Testable for T {
+    fn run(&self) {
+        serial_print!("Running {}", core::any::type_name::<T>());
+        self();
+        serial_println!(" ..[ok]");
+    }
 }
 
 #[allow(unused)]

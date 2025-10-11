@@ -6,7 +6,7 @@ edition = "2024"
 # Binary doesn't support builds in bench modes
 [[bin]]
 name = "kalopsia-os"
-test = true
+test = false
 bench = false
 
 [dependencies]
