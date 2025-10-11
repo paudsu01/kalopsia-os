@@ -7,8 +7,5 @@
 
 ## Notes:
 `cargo run` behind the scences is just doing the following:
-1. cargo bootimage
-2. qemu-system-x86_64 -drive format=raw,file=target/kalopsia-os-x86-64/debug/bootimage-kalopsia-os.bin
-
-
-
+1. `cargo bootimage`
+2. `qemu-system-x86_64 -drive format=raw,file=target/kalopsia-os-x86-64/debug/bootimage-kalopsia-os.bin`
