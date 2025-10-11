@@ -4,7 +4,7 @@ use super::{ColorMode, TextColor, VGABuffer, VGAChar, VGA_COLS};
 
 #[allow(unused)]
 struct VGAWriter {
-    // No row since we are only going to be writing at the last row
+    row: u16,
     col: u16,
     color: ColorMode,
     buffer: VGABuffer,
@@ -14,6 +14,7 @@ struct VGAWriter {
 impl VGAWriter {
     fn new() -> Self {
         VGAWriter {
+            row: 0,
             col: 0,
             color: ColorMode::new(TextColor::Green, TextColor::Black, false),
             buffer: VGABuffer,
@@ -22,9 +23,13 @@ impl VGAWriter {
 
     fn write_byte(&mut self, byte: u8) {
         if byte == b'\n' || self.col == VGA_COLS {
-            self.buffer.move_rows_up();
+            if self.row == VGA_ROWS - 1 {
+                self.buffer.move_rows_up();
+                self.buffer.clear_row(VGA_ROWS - 1);
+            } else {
+                self.row += 1;
+            };
             self.col = 0;
-            self.buffer.clear_row(VGA_ROWS - 1);
         }
         if byte == b'\n' {
             return;
@@ -35,8 +40,8 @@ impl VGAWriter {
             _ => 3,
         };
 
-        self.buffer.write_byte(
-            VGA_ROWS - 1,
+        self.buffer.write_char(
+            self.row,
             self.col,
             VGAChar {
                 byte: vga_byte,
@@ -95,3 +100,6 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     VGA_WRITER.lock().write_fmt(args).unwrap();
 }
+
+#[cfg(test)]
+mod writer_tests;

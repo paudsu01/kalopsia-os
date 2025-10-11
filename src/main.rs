@@ -2,13 +2,12 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-
-// VGA buffer mode
-mod vga_buffer;
+use kalopsia_os::println;
 
 // Custom panic handler since std lib is disabled
 #[panic_handler]
 pub fn panic(_info: &PanicInfo) -> ! {
+    println!("{_info}");
     loop {}
 }
 
@@ -19,7 +18,8 @@ pub fn panic(_info: &PanicInfo) -> ! {
  */
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    println!("HELLO WORLD");
-    print!("this is {}", "kalopsia-os");
+    println!("Hello World!, ");
+    println!("this is {}", "kalopsia-os");
+
     loop {}
 }
