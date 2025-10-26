@@ -7,6 +7,7 @@
 // For the "x86-interrupt" calling convention which is unstable
 #![feature(abi_x86_interrupt)]
 
+pub mod gdt;
 pub mod interrupts;
 pub mod test_framework;
 pub mod vga_buffer;
@@ -15,6 +16,7 @@ use core::panic::PanicInfo;
 use test_framework::{exit_qemu, QEMUExitCode};
 
 pub fn init() {
+    gdt::init();
     interrupts::init_idt();
 }
 
