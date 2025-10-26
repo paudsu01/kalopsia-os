@@ -13,7 +13,7 @@ pub mod test_framework;
 pub mod vga_buffer;
 
 use core::panic::PanicInfo;
-use test_framework::{exit_qemu, QEMUExitCode};
+pub use test_framework::{exit_qemu, QEMUExitCode};
 
 pub fn init() {
     gdt::init();
