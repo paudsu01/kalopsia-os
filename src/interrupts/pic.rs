@@ -3,11 +3,11 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 lazy_static! {
-    static ref PICS: Mutex<Pics> = Mutex::new({
-        let mut pics = Pics::new();
-        pics.remap();
-        pics
-    });
+    pub static ref PICS: Mutex<Pics> = Mutex::new(Pics::new());
+}
+
+pub fn init_pics() {
+    PICS.lock().remap();
 }
 
 const MASTER_COMMAND_PORT: u16 = 0x20;
@@ -85,7 +85,7 @@ impl Pic {
     }
 }
 
-struct Pics {
+pub struct Pics {
     master: Pic,
     slave: Pic,
     master_offset: u8,
@@ -151,7 +151,7 @@ impl Pics {
     /// EOI signal should be sent so that the PIC knows we are ready to receive the next interrupt
     /// Notify master PIC only if the IRQ came from the Master PIC
     /// Otherwise, notify both master and slave PIC
-    fn end_of_interrupt(&mut self, irq: u8) {
+    pub fn end_of_interrupt(&mut self, irq: u8) {
         if irq >= self.slave_offset {
             self.slave.end_of_interrupt();
         }

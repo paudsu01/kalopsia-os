@@ -18,7 +18,10 @@ pub use test_framework::{exit_qemu, QEMUExitCode};
 
 pub fn init() {
     gdt::init();
-    interrupts::init_idt();
+    interrupts::init_idt(); // Load the IDT
+    interrupts::init_pics(); // Init PIC with new offsets so that interrupt numbers don't overlap
+                             // exception indexes in the IDT
+    interrupts::enable(); // Enable interrupt with the `sti` instruction
 }
 
 // Entry point for `cargo test`
