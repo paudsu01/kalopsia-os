@@ -27,7 +27,7 @@ pub extern "C" fn _start() -> ! {
     IDT.load();
 
     test_main();
-    loop {}
+    kalopsia_os::hlt();
 }
 
 #[panic_handler]
@@ -50,5 +50,5 @@ fn stack_overflow() {
 extern "x86-interrupt" fn double_fault_handler(_frame: InterruptStackFrame, _error_code: u64) -> ! {
     kalopsia_os::serial_println!(" ..[ok]\n");
     kalopsia_os::exit_qemu(kalopsia_os::QEMUExitCode::Success);
-    loop {}
+    kalopsia_os::hlt();
 }

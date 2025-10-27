@@ -24,13 +24,13 @@ lazy_static! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    kalopsia_os::serial_print!("Running tests/timer_interrupt_test.rs");
+    kalopsia_os::serial_print!("\nRunning tests/timer_interrupt_test.rs");
     kalopsia_os::gdt::init();
     IDT.load();
 
     kalopsia_os::interrupts::init_pics();
     kalopsia_os::interrupts::enable();
-    loop {}
+    kalopsia_os::hlt();
 }
 
 #[panic_handler]
@@ -43,6 +43,6 @@ extern "x86-interrupt" fn double_fault_handler(_frame: InterruptStackFrame, _err
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
-    kalopsia_os::serial_println!(" ..[ok]");
+    kalopsia_os::serial_println!(" ..[ok]\n");
     kalopsia_os::exit_qemu(kalopsia_os::QEMUExitCode::Success);
 }

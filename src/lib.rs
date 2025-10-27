@@ -24,20 +24,26 @@ pub fn init() {
     interrupts::enable(); // Enable interrupt with the `sti` instruction
 }
 
+pub fn hlt() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 // Entry point for `cargo test`
 #[cfg(test)]
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+    hlt();
 }
 
 pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QEMUExitCode::Failure);
-    loop {}
+    hlt();
 }
 
 #[cfg(test)]

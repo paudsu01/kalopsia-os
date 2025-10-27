@@ -8,6 +8,7 @@ pub use pic::{init_pics, Interrupts, PICS};
 
 mod utils;
 pub use utils::enable;
+pub use utils::without_interrupts;
 
 #[cfg(test)]
 mod interrupts_tests;
@@ -51,7 +52,7 @@ extern "x86-interrupt" fn breakpoint_exception_handler(frame: InterruptStackFram
 
 extern "x86-interrupt" fn divide_by_zero_exception_handler(frame: InterruptStackFrame) {
     println!("You tried to divide by zero: {:#?}", frame);
-    loop {}
+    panic!("Divide by zero error: {:#?}", frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(frame: InterruptStackFrame, error_code: u64) -> ! {

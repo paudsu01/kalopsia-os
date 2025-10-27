@@ -8,7 +8,7 @@ use kalopsia_os::println;
 #[panic_handler]
 pub fn panic(_info: &PanicInfo) -> ! {
     println!("{_info}");
-    loop {}
+    kalopsia_os::hlt();
 }
 
 /** `_start` function
@@ -22,5 +22,6 @@ pub extern "C" fn _start() -> ! {
 
     println!("Hello World!, ");
     println!("this is {}", "kalopsia-os");
-    loop {}
+
+    kalopsia_os::hlt();
 }

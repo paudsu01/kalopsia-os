@@ -13,3 +13,9 @@ pub fn disable() {
         asm!("cli");
     }
 }
+
+pub fn without_interrupts<F: Fn()>(closure: F) {
+    disable();
+    closure();
+    enable();
+}
