@@ -1,4 +1,4 @@
-use crate::{println, serial_print, serial_println};
+use crate::{println, serial_print, serial_println, utils::Port};
 
 // Custom test framework setup: https://doc.rust-lang.org/beta/unstable-book/language-features/custom-test-frameworks.html
 // Reference: https://os.phil-opp.com/testing/
@@ -37,14 +37,9 @@ pub fn exit_qemu(exit_code: QEMUExitCode) {
     // We basically produce the `out` assembly instruction which writes the status code to the port
     // 0xf4
     use core::arch::asm;
+    let mut port = Port::new(0xf4);
     let exit_code: u32 = exit_code as u32;
-    unsafe {
-        asm!(
-            "out dx, eax",
-            in("dx") 0xf4,  // port number in DX
-            in("eax") exit_code, // 4 byte exit code in EAX
-        );
-    }
+    port.writel(exit_code);
 }
 
 mod serial;
