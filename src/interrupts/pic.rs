@@ -157,4 +157,14 @@ impl Pics {
         }
         self.master.end_of_interrupt();
     }
+
+    pub fn disable(&mut self) {
+        self.master.disable();
+        self.slave.disable();
+    }
+
+    pub fn unmask(&mut self) {
+        self.master.unmask();
+        self.slave.unmask();
+    }
 }

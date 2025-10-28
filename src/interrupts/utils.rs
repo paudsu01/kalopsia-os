@@ -14,8 +14,28 @@ pub fn disable() {
     }
 }
 
+/// Read the IF flag from RLAGS
+fn if_flag() -> u8 {
+    let rflags: u64;
+    unsafe {
+        asm!(
+            "pushfq; pop {}",
+            out(reg) rflags,
+            options(nomem, preserves_flags),
+        );
+    }
+    // IF is bit 9 in RFLAGS
+    (rflags & (1 << 9)) as u8
+}
+
 pub fn without_interrupts<F: Fn()>(closure: F) {
-    disable();
+    let if_flag = if_flag();
+    if if_flag == 1 {
+        disable();
+    }
     closure();
-    enable();
+
+    if if_flag == 1 {
+        enable();
+    }
 }

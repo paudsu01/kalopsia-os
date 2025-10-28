@@ -7,8 +7,8 @@ mod pic;
 pub use pic::{init_pics, Interrupts, PICS};
 
 mod utils;
-pub use utils::enable;
 pub use utils::without_interrupts;
+pub use utils::{disable, enable};
 
 #[cfg(test)]
 mod interrupts_tests;
@@ -38,6 +38,7 @@ pub fn init_handlers(idt: &mut InterruptDescriptorTable) {
     }
     idt.page_fault.set_handler_fn(page_fault_handler);
     idt[pic::Interrupts::Timer as u8].set_handler_fn(timer_interrupt_handler);
+    idt[pic::Interrupts::Keyboard as u8].set_handler_fn(keyboard::keyboard_interrupt_handler);
 }
 
 /* For all the exception handlers, the x86-interrupt calling convention hides most details of
@@ -73,3 +74,5 @@ extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
     print!(".");
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
+
+mod keyboard;
