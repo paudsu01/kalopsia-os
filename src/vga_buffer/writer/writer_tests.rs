@@ -1,3 +1,5 @@
+use core::fmt::Write;
+
 use super::VGA_WRITER;
 
 #[test_case]
@@ -12,25 +14,26 @@ fn test_println_simple() {
 
 #[test_case]
 fn test_println_output() {
-    let start_row: u16;
-    let start_col: u16;
-    {
-        let writer = VGA_WRITER.lock();
-        start_row = writer.row;
-        start_col = writer.col;
-    }
+    use crate::interrupts;
 
-    let string = "Hello World!, This is kalopsia OS";
-    let mut string_bytes = string.bytes();
-    print!("{string}");
+    interrupts::without_interrupts(|| {
+        let mut writer = VGA_WRITER.lock();
+        let start_row = writer.row;
+        let start_col = writer.col;
 
-    let writer = VGA_WRITER.lock();
-    for row in start_row..(writer.row + 1) {
-        for col in start_col..writer.col {
-            assert_eq!(
-                writer.buffer.read_char(row, col).unwrap(),
-                string_bytes.next().unwrap()
-            );
+        let string = "Hello World!, This is kalopsia OS";
+        let mut string_bytes = string.bytes();
+        // Use write_str instead because `print` macro disables and enables interrupts back. We
+        // want the whole test to be atomic
+        writer.write_str(string).unwrap();
+
+        for row in start_row..(writer.row + 1) {
+            for col in start_col..writer.col {
+                assert_eq!(
+                    writer.buffer.read_char(row, col).unwrap(),
+                    string_bytes.next().unwrap()
+                );
+            }
         }
-    }
+    });
 }

@@ -97,8 +97,12 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
+    use crate::interrupts;
     use core::fmt::Write;
-    VGA_WRITER.lock().write_fmt(args).unwrap();
+
+    interrupts::without_interrupts(|| {
+        VGA_WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 #[cfg(test)]
