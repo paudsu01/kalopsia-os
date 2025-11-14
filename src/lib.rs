@@ -9,6 +9,7 @@
 
 pub mod gdt;
 pub mod interrupts;
+pub mod memory;
 pub mod test_framework;
 pub mod utils;
 pub mod vga_buffer;
