@@ -1,6 +1,23 @@
+use core::slice::Iter;
+
+const MAX_ENTRIES: u64 = 512;
 #[repr(transparent)]
 pub struct PageTable {
-    entries: [PageTableEntry; 512],
+    entries: [PageTableEntry; MAX_ENTRIES as usize],
+}
+
+impl PageTable {
+    pub fn iter(&self) -> Iter<'_, PageTableEntry> {
+        self.entries.iter()
+    }
+
+    pub fn get(&self, index: u64) -> Option<PageTableEntry> {
+        if index >= MAX_ENTRIES {
+            None
+        } else {
+            Some(self.entries[index as usize])
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -9,6 +26,14 @@ pub enum PageSize {
     FourKiB,
     TwoMiB,
     OneGiB,
+}
+
+#[derive(Copy, Clone)]
+pub enum PageTableLevel {
+    Level1,
+    Level2,
+    Level3,
+    Level4,
 }
 
 // Source: Content from https://blog.zolutal.io/understanding-paging/
@@ -28,6 +53,7 @@ pub enum PageSize {
 // ||           | |                                               | |||| |||| ||||
 // 0000 0000 0000 0000 0000 0000 0000 0001 0010 0011 1111 1100 1010 0000 0110 0111
 //        56        48        40        32        24        16         8         0
+#[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct PageTableEntry {
     value: u64,
@@ -56,12 +82,27 @@ impl PageTableEntry {
         }
     }
 
-    pub fn as_physical_address(&self, page_size: PageSize) -> u64 {
-        match page_size {
-            PageSize::FourKiB => self.value & PageTableEntry::PFN_4KIB_MASK,
-            PageSize::TwoMiB => self.value & PageTableEntry::PFN_2MIB_MASK,
-            PageSize::OneGiB => self.value & PageTableEntry::PFN_1GIB_MASK,
-        }
+    pub fn as_physical_address(&self, page_table_level: PageTableLevel) -> *const u8 {
+        (match page_table_level {
+            PageTableLevel::Level1 => self.value & PageTableEntry::PFN_4KIB_MASK,
+            PageTableLevel::Level2 => {
+                let mask = if self.is_huge() {
+                    PageTableEntry::PFN_2MIB_MASK
+                } else {
+                    PageTableEntry::PFN_4KIB_MASK
+                };
+                self.value & mask
+            }
+            PageTableLevel::Level3 => {
+                let mask = if self.is_huge() {
+                    PageTableEntry::PFN_1GIB_MASK
+                } else {
+                    PageTableEntry::PFN_4KIB_MASK
+                };
+                self.value & mask
+            }
+            PageTableLevel::Level4 => self.value & PageTableEntry::PFN_4KIB_MASK,
+        }) as *const u8
     }
 
     pub fn is_present(&self) -> bool {
@@ -102,6 +143,10 @@ impl PageTableEntry {
 
     pub fn is_nx(&self) -> bool {
         ((self.value >> 63) & 1) != 0
+    }
+
+    pub fn is_unused(&self) -> bool {
+        self.value == 0
     }
 }
 

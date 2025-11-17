@@ -17,11 +17,12 @@ pub mod vga_buffer;
 use core::panic::PanicInfo;
 pub use test_framework::{exit_qemu, QEMUExitCode};
 
-pub fn init() {
+pub fn init(physical_memory_offset: u64) {
     gdt::init();
     interrupts::init_idt(); // Load the IDT
     interrupts::init_pics(); // Init PIC with new offsets so that interrupt numbers don't overlap
                              // exception indexes in the IDT
+    memory::init(physical_memory_offset); // Init memory to use offset for address translations
     interrupts::enable(); // Enable interrupt with the `sti` instruction
 }
 
@@ -34,8 +35,8 @@ pub fn hlt() -> ! {
 // Entry point for `cargo test`
 #[cfg(test)]
 #[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    init();
+pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
+    init(boot_info.physical_memory_offset);
     test_main();
     hlt();
 }
