@@ -1,15 +1,11 @@
 use x86_64::registers::control::Cr3;
-use x86_64::structures::paging::page_table::PageTableEntry;
 
 // mod recursive_paging;
 // pub use recursive_paging::get_page_table_vaddr;
 
+mod page_table;
 mod vaddr;
-
-#[repr(transparent)]
-pub struct PageTable {
-    entries: [PageTableEntry; 512],
-}
+use page_table::PageTable;
 
 /* Note: The memory module assumes the bootloader has mapped the whole physical memory. See
  * `Cargo.toml` -> bootloader -> features=["map_physical_memory"]
