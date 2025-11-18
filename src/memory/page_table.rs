@@ -1,5 +1,7 @@
 use core::slice::Iter;
 
+use crate::memory::PhysicalAddress;
+
 const MAX_ENTRIES: u64 = 512;
 #[repr(transparent)]
 pub struct PageTable {
@@ -34,6 +36,18 @@ pub enum PageTableLevel {
     Level2,
     Level3,
     Level4,
+}
+
+impl PageTableLevel {
+    pub fn from_u8(u: u8) -> Option<PageTableLevel> {
+        match u {
+            1 => Some(PageTableLevel::Level1),
+            2 => Some(PageTableLevel::Level2),
+            3 => Some(PageTableLevel::Level3),
+            4 => Some(PageTableLevel::Level4),
+            _ => None,
+        }
+    }
 }
 
 // Source: Content from https://blog.zolutal.io/understanding-paging/
@@ -82,8 +96,8 @@ impl PageTableEntry {
         }
     }
 
-    pub fn as_physical_address(&self, page_table_level: PageTableLevel) -> *const u8 {
-        (match page_table_level {
+    pub fn as_physical_address(&self, page_table_level: PageTableLevel) -> PhysicalAddress {
+        let addr = match page_table_level {
             PageTableLevel::Level1 => self.value & PageTableEntry::PFN_4KIB_MASK,
             PageTableLevel::Level2 => {
                 let mask = if self.is_huge() {
@@ -102,7 +116,8 @@ impl PageTableEntry {
                 self.value & mask
             }
             PageTableLevel::Level4 => self.value & PageTableEntry::PFN_4KIB_MASK,
-        }) as *const u8
+        };
+        PhysicalAddress::new(addr)
     }
 
     pub fn is_present(&self) -> bool {

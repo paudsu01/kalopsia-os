@@ -19,10 +19,10 @@ pub use test_framework::{exit_qemu, QEMUExitCode};
 
 pub fn init(physical_memory_offset: u64) {
     gdt::init();
+    memory::init(physical_memory_offset); // Init memory to use offset for address translations
     interrupts::init_idt(); // Load the IDT
     interrupts::init_pics(); // Init PIC with new offsets so that interrupt numbers don't overlap
                              // exception indexes in the IDT
-    memory::init(physical_memory_offset); // Init memory to use offset for address translations
     interrupts::enable(); // Enable interrupt with the `sti` instruction
 }
 

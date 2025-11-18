@@ -23,10 +23,19 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
 
     println!("Hello World!, ");
     println!("this is {}", "kalopsia-os");
-    for (i, pte) in lvl_4_page_table.iter().enumerate() {
-        if !pte.is_unused() {
-            println!("Entry {}: Value: {:?}", i, pte);
-        }
+
+    use kalopsia_os::memory::{translate_address, VirtualAddress};
+    let addresses = [
+        0xb8000,
+        0x201008,
+        0x0100_0020_1a10,
+        boot_info.physical_memory_offset,
+    ];
+
+    for address in addresses {
+        let virt = VirtualAddress::new(address);
+        let phys = translate_address(virt);
+        println!("{:?} -> {:?}", address as *const u8, phys);
     }
 
     kalopsia_os::hlt();

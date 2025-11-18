@@ -1,5 +1,7 @@
 use core::ops::Add;
 
+use crate::memory::page_table::PageSize;
+
 /// VirtualAddress to represent an address
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -40,8 +42,12 @@ impl VirtualAddress {
         ((self.addr as u64) >> 12) & 0o777
     }
 
-    pub fn get_offset(&self) -> u64 {
-        (self.addr as u64) & 0o7777
+    pub fn get_offset(&self, offset_type: PageSize) -> u64 {
+        match offset_type {
+            PageSize::FourKiB => (self.addr as u64) & 0o7777,
+            PageSize::TwoMiB => (self.addr as u64) & 0o7777777,
+            PageSize::OneGiB => (self.addr as u64) & 0o7777777777,
+        }
     }
 }
 
