@@ -15,6 +15,7 @@ pub fn disable() {
 }
 
 /// Read the IF flag from RLAGS
+#[allow(dead_code)]
 fn if_flag() -> u8 {
     let rflags: u64;
     unsafe {
@@ -25,17 +26,31 @@ fn if_flag() -> u8 {
         );
     }
     // IF is bit 9 in RFLAGS
-    (rflags & (1 << 9)) as u8
+    ((rflags & 0x0200) >> 9) as u8
 }
 
 pub fn without_interrupts<F: Fn()>(closure: F) {
-    let if_flag = if_flag();
-    if if_flag == 1 {
-        disable();
+    let rflags: u64;
+    // save rflags (including IF)
+    unsafe {
+        asm!(
+            "pushfq",
+            "pop {rflags}",
+            "cli",
+            rflags = out(reg) rflags,
+            options(nomem, preserves_flags)
+        );
     }
+
     closure();
 
-    if if_flag == 1 {
-        enable();
+    // restore rflags
+    unsafe {
+        asm!(
+            "push {rflags}",
+            "popfq",
+            rflags = in(reg) rflags,
+            options(nomem, preserves_flags)
+        );
     }
 }

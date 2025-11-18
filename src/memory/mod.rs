@@ -5,6 +5,9 @@ use x86_64::registers::control::Cr3;
 // mod recursive_paging;
 // pub use recursive_paging::get_page_table_vaddr;
 
+#[cfg(test)]
+mod addr_translation_tests;
+
 mod addr;
 mod page_table;
 pub use addr::{PhysicalAddress, VirtualAddress};
