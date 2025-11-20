@@ -1,3 +1,4 @@
+use crate::memory::addr::FlusherVirtualAddress;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::structures::paging::FrameAllocator;
@@ -78,8 +79,8 @@ impl Memory {
         v_addr: VirtualAddress,
         p_addr: PhysicalAddress,
         flags: u64,
-        frame_allocator: T,
-    ) -> Result<(), &'static str> {
+        frame_allocator: &mut T,
+    ) -> Result<FlusherVirtualAddress, &'static str> {
         let physical_memory_offset = self.offset.unwrap();
         // get the different indexes to be used for different level page tables
         let indexes = [
@@ -92,14 +93,15 @@ impl Memory {
             4,
             current_page_table,
             &indexes,
+            flags,
             physical_memory_offset,
             frame_allocator,
-        );
+        )?;
         level_1_pt.set(
             v_addr.get_lvl_1_index(),
             PageTableEntry::new(p_addr.as_u64() >> 12, flags),
         )?;
-        Ok(())
+        Ok(FlusherVirtualAddress::new(v_addr))
     }
 }
 
@@ -109,25 +111,47 @@ fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
     current_level: usize,
     current_page_table: &'a mut PageTable,
     indexes: &[u64; 3],
-    physical_memory_offset: u64,
-    _frame_allocator: T,
-) -> &'a mut PageTable {
+    _flags: u64,
+    _physical_memory_offset: u64,
+    _frame_allocator: &mut T,
+) -> Result<&'a mut PageTable, &'static str> {
     // get PTE
-    let pte = current_page_table.get(indexes[4 - current_level]).unwrap();
+    let pte = &mut current_page_table.get(indexes[4 - current_level]).unwrap();
+
+    if pte.is_unused() {
+        // allocate a new frame
+        let frame = _frame_allocator.allocate_frame();
+        if frame.is_none() {
+            return Err("Allocation for new frame failed. Unable to update mapping.");
+        }
+        // zero out all PTEs
+        let p_addr = frame.unwrap().start_address().as_u64();
+        let v_addr = VirtualAddress::new(p_addr + _physical_memory_offset);
+        let new_page_table = unsafe { &mut *(v_addr.as_u64() as *mut PageTable) };
+        unsafe {
+            new_page_table.zero_out();
+        }
+        // update the current page table's pte entry to point to the new frame
+        *pte = PageTableEntry::new(p_addr >> 12, _flags);
+    }
+
     // get the vaddr for the next page table
-    let v_addr = VirtualAddress::new(pte.as_physical_address(PageTableLevel::Level4).as_u64())
-        + physical_memory_offset;
+    let ptable_level: PageTableLevel =
+        page_table::PageTableLevel::from_u8(current_level as u8).unwrap();
+    let v_addr = VirtualAddress::new(pte.as_physical_address(ptable_level).as_u64())
+        + _physical_memory_offset;
     let current_page_table = unsafe { &mut *(v_addr.as_u64() as *mut PageTable) };
 
     if current_level == 2 {
-        current_page_table
+        Ok(current_page_table)
     } else {
         // recursive call
         force_get_lvl_1_page_table(
             current_level - 1,
             current_page_table,
             indexes,
-            physical_memory_offset,
+            _flags,
+            _physical_memory_offset,
             _frame_allocator,
         )
     }

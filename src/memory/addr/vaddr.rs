@@ -1,4 +1,4 @@
-use core::ops::Add;
+use core::{arch::asm, ops::Add};
 
 use crate::memory::page_table::PageSize;
 
@@ -59,6 +59,23 @@ impl Add<u64> for VirtualAddress {
     fn add(self, other: u64) -> Self {
         VirtualAddress {
             addr: (self.as_u64() + other) as *const u8,
+        }
+    }
+}
+
+/// `struct` to flush v.addr VPN from the TLB
+pub struct FlusherVirtualAddress {
+    vaddr: VirtualAddress,
+}
+
+impl FlusherVirtualAddress {
+    pub fn new(vaddr: VirtualAddress) -> Self {
+        FlusherVirtualAddress { vaddr }
+    }
+
+    pub fn flush(&self) {
+        unsafe {
+            asm!("invlpg [{}]", in(reg) self.vaddr.as_u64(), options(nostack, preserves_flags));
         }
     }
 }

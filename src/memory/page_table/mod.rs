@@ -7,6 +7,13 @@ pub struct PageTable {
 }
 
 impl PageTable {
+    /// Zero out all PTE
+    pub unsafe fn zero_out(&mut self) {
+        for pte in &mut self.entries {
+            *pte = PageTableEntry::new(0, 0);
+        }
+    }
+
     pub fn iter(&self) -> Iter<'_, PageTableEntry> {
         self.entries.iter()
     }

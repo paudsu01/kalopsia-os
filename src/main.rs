@@ -37,13 +37,13 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
         println!("{:?} -> {:?}", address as *const u8, phys);
     }
 
-    let dummy_allocator = kalopsia_os::memory::DummyAllocator;
+    let mut dummy_allocator = kalopsia_os::memory::DummyAllocator;
 
     let _ = MEMORY.lock().map_4kib_page(
         VirtualAddress::new(0x0),
         PhysicalAddress::new(0xb8000),
         PTFlags::Write | PTFlags::Present,
-        dummy_allocator,
+        &mut dummy_allocator,
     );
 
     let page_ptr: *mut u64 = VirtualAddress::new(0x0).as_u64() as *mut u64;
