@@ -4,7 +4,6 @@ use crate::memory::page_table::PageSize;
 
 /// VirtualAddress to represent an address
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct VirtualAddress {
     pub addr: *const u8,
 }
@@ -14,7 +13,6 @@ pub struct VirtualAddress {
 ///  64               48         39          30          21          12              0
 ///  |------------------| --------- | --------- | --------- | --------- | ------------ |
 ///  | Sign Extension   |  L4 index |  L3 index | L2 index  | L1 index  | Offset       |
-#[allow(dead_code)]
 impl VirtualAddress {
     pub fn new(addr: u64) -> Self {
         VirtualAddress {

@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
-use x86_64::registers::control::Cr3;
+use x86_64::structures::paging::FrameAllocator;
+use x86_64::{registers::control::Cr3, structures::paging::Size4KiB};
 
 // mod recursive_paging;
 // pub use recursive_paging::get_page_table_vaddr;
@@ -9,60 +10,127 @@ use x86_64::registers::control::Cr3;
 mod addr_translation_tests;
 
 mod addr;
+mod frame_allocator;
+pub use frame_allocator::DummyAllocator;
 mod page_table;
 pub use addr::{PhysicalAddress, VirtualAddress};
+pub use page_table::PTFlags;
 use page_table::{PageSize, PageTable, PageTableLevel};
 
-struct Memory {
+use crate::memory::page_table::PageTableEntry;
+
+pub struct Memory {
     offset: Option<u64>,
 }
 
 lazy_static! {
-    static ref MEMORY: Mutex<Memory> = Mutex::new(Memory { offset: None });
+    pub static ref MEMORY: Mutex<Memory> = Mutex::new(Memory { offset: None });
 }
 
 pub fn init(physical_memory_offset: u64) {
     MEMORY.lock().offset = Some(physical_memory_offset);
 }
 
-/// Note: The memory module assumes the bootloader has mapped the whole physical memory. See
-/// `Cargo.toml` -> bootloader -> features=["map_physical_memory"]
-///  The memory is mapped such that v.addr = p.addr + offset
-///  This offset needs to be passed as the argument to Memory
-///  Must only be called once because of mutable reference
-pub fn active_lvl_4_pt() -> &'static mut PageTable {
-    let pt_physical_frame = Cr3::read();
-    let lvl_4_pt_physical_addr = pt_physical_frame.0.start_address().as_u64();
+#[allow(dead_code)]
+impl Memory {
+    /// Note: The memory module assumes the bootloader has mapped the whole physical memory. See
+    /// `Cargo.toml` -> bootloader -> features=["map_physical_memory"]
+    ///  The memory is mapped such that v.addr = p.addr + offset
+    ///  This offset needs to be passed as the argument to Memory
+    ///  Must only be called once because of mutable reference
+    pub fn active_lvl_4_pt(&self) -> &'static mut PageTable {
+        let pt_physical_frame = Cr3::read();
+        let lvl_4_pt_physical_addr = pt_physical_frame.0.start_address().as_u64();
 
-    /* V.addr = P.Addr + offset (setup by the bootloader when paging enabled) */
-    let v_addr = VirtualAddress::new(lvl_4_pt_physical_addr) + MEMORY.lock().offset.unwrap();
-    let ptr = v_addr.addr as *mut PageTable;
-    unsafe { &mut *ptr }
+        /* V.addr = P.Addr + offset (setup by the bootloader when paging enabled) */
+        let v_addr = VirtualAddress::new(lvl_4_pt_physical_addr) + self.offset.unwrap();
+        let ptr = v_addr.addr as *mut PageTable;
+        unsafe { &mut *ptr }
+    }
+
+    /// Traverse the page table to convert the given v.addr to p.addr
+    /// If no entry present, returns None
+    pub fn translate_address(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
+        let physical_memory_offset = self.offset.unwrap();
+
+        // get the different indexes to be used for different level page tables
+        let indexes = [
+            addr.get_lvl_4_index(),
+            addr.get_lvl_3_index(),
+            addr.get_lvl_2_index(),
+            addr.get_lvl_1_index(),
+        ];
+        let current_page_table = self.active_lvl_4_pt();
+        // recursively find out the pfn entry to get the physical address
+        get_physical_address(
+            4,
+            current_page_table,
+            addr,
+            &indexes,
+            physical_memory_offset,
+        )
+    }
+
+    /// map a 4KIB page vpn -> pfn in the page table based on the v_addr and p_addr provided
+    /// v_addr and p_addr must be page aligned, the offset of the addr is ignored
+    pub fn map_4kib_page<T: FrameAllocator<Size4KiB>>(
+        &self,
+        v_addr: VirtualAddress,
+        p_addr: PhysicalAddress,
+        flags: u64,
+        frame_allocator: T,
+    ) -> Result<(), &'static str> {
+        let physical_memory_offset = self.offset.unwrap();
+        // get the different indexes to be used for different level page tables
+        let indexes = [
+            v_addr.get_lvl_4_index(),
+            v_addr.get_lvl_3_index(),
+            v_addr.get_lvl_2_index(),
+        ];
+        let current_page_table = self.active_lvl_4_pt();
+        let level_1_pt = force_get_lvl_1_page_table(
+            4,
+            current_page_table,
+            &indexes,
+            physical_memory_offset,
+            frame_allocator,
+        );
+        level_1_pt.set(
+            v_addr.get_lvl_1_index(),
+            PageTableEntry::new(p_addr.as_u64() >> 12, flags),
+        )?;
+        Ok(())
+    }
 }
 
-/// Traverse the page table to convert the given v.addr to p.addr
-/// If no entry present, returns None
-pub fn translate_address(addr: VirtualAddress) -> Option<PhysicalAddress> {
-    let physical_memory_offset = MEMORY.lock().offset.unwrap();
+/// Gets the level 1 page table entry for a given virtual address
+/// Forcefully allocates frames as necessay
+fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
+    current_level: usize,
+    current_page_table: &'a mut PageTable,
+    indexes: &[u64; 3],
+    physical_memory_offset: u64,
+    _frame_allocator: T,
+) -> &'a mut PageTable {
+    // get PTE
+    let pte = current_page_table.get(indexes[4 - current_level]).unwrap();
+    // get the vaddr for the next page table
+    let v_addr = VirtualAddress::new(pte.as_physical_address(PageTableLevel::Level4).as_u64())
+        + physical_memory_offset;
+    let current_page_table = unsafe { &mut *(v_addr.as_u64() as *mut PageTable) };
 
-    // get the different indexes to be used for different level page tables
-    let indexes = [
-        addr.get_lvl_4_index(),
-        addr.get_lvl_3_index(),
-        addr.get_lvl_2_index(),
-        addr.get_lvl_1_index(),
-    ];
-    let pt_physical_frame = Cr3::read();
-    let vaddr = pt_physical_frame.0.start_address().as_u64() + physical_memory_offset;
-    let current_page_table = unsafe { &*(vaddr as *const PageTable) };
-    // recursively find out the pfn entry to get the physical address
-    get_physical_address(
-        4,
-        current_page_table,
-        addr,
-        &indexes,
-        physical_memory_offset,
-    )
+    if current_level == 2 {
+        current_page_table
+    } else {
+        // recursive call
+        force_get_lvl_1_page_table(
+            current_level - 1,
+            current_page_table,
+            indexes,
+            physical_memory_offset,
+            _frame_allocator,
+        )
+    }
 }
 
 /// Note that walk can stop early and offset can changes if huge page (2MiB and 1GiB) if PS is set to 1

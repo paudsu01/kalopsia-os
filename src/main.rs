@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-use kalopsia_os::println;
+use kalopsia_os::{memory::PhysicalAddress, println};
 
 // Custom panic handler since std lib is disabled
 #[panic_handler]
@@ -19,12 +19,11 @@ pub fn panic(_info: &PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
     kalopsia_os::init(boot_info.physical_memory_offset);
-    let lvl_4_page_table = kalopsia_os::memory::active_lvl_4_pt();
+    use kalopsia_os::memory::{PTFlags, VirtualAddress, MEMORY};
 
     println!("Hello World!, ");
     println!("this is {}", "kalopsia-os");
 
-    use kalopsia_os::memory::{translate_address, VirtualAddress};
     let addresses = [
         0xb8000,
         0x201008,
@@ -34,9 +33,21 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
 
     for address in addresses {
         let virt = VirtualAddress::new(address);
-        let phys = translate_address(virt);
+        let phys = MEMORY.lock().translate_address(virt);
         println!("{:?} -> {:?}", address as *const u8, phys);
     }
+
+    let dummy_allocator = kalopsia_os::memory::DummyAllocator;
+
+    let _ = MEMORY.lock().map_4kib_page(
+        VirtualAddress::new(0x0),
+        PhysicalAddress::new(0xb8000),
+        PTFlags::Write | PTFlags::Present,
+        dummy_allocator,
+    );
+
+    let page_ptr: *mut u64 = VirtualAddress::new(0x0).as_u64() as *mut u64;
+    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
 
     kalopsia_os::hlt();
 }
