@@ -12,7 +12,7 @@ mod addr_translation_tests;
 
 mod addr;
 mod frame_allocator;
-pub use frame_allocator::DummyAllocator;
+pub use frame_allocator::{usable_frames, BootInfoFrameAllocator};
 mod page_table;
 pub use addr::{PhysicalAddress, VirtualAddress};
 pub use page_table::PTFlags;
@@ -111,13 +111,17 @@ fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
     current_level: usize,
     current_page_table: &'a mut PageTable,
     indexes: &[u64; 3],
-    _flags: u64,
+    flags: u64,
     _physical_memory_offset: u64,
     _frame_allocator: &mut T,
 ) -> Result<&'a mut PageTable, &'static str> {
     // get PTE
-    let pte = &mut current_page_table.get(indexes[4 - current_level]).unwrap();
+    let c_index: u64 = indexes[4 - current_level];
+    let ptable_level: PageTableLevel =
+        page_table::PageTableLevel::from_u8(current_level as u8).unwrap();
+    let mut pte = current_page_table.get(c_index).unwrap();
 
+    // If PTE is 0, we allocate a new frame so that the CPU can perform the traversal
     if pte.is_unused() {
         // allocate a new frame
         let frame = _frame_allocator.allocate_frame();
@@ -132,12 +136,11 @@ fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
             new_page_table.zero_out();
         }
         // update the current page table's pte entry to point to the new frame
-        *pte = PageTableEntry::new(p_addr >> 12, _flags);
+        pte = PageTableEntry::new(p_addr >> 12, flags);
+        current_page_table.set(c_index, pte)?;
     }
 
     // get the vaddr for the next page table
-    let ptable_level: PageTableLevel =
-        page_table::PageTableLevel::from_u8(current_level as u8).unwrap();
     let v_addr = VirtualAddress::new(pte.as_physical_address(ptable_level).as_u64())
         + _physical_memory_offset;
     let current_page_table = unsafe { &mut *(v_addr.as_u64() as *mut PageTable) };
@@ -150,7 +153,7 @@ fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
             current_level - 1,
             current_page_table,
             indexes,
-            _flags,
+            flags,
             _physical_memory_offset,
             _frame_allocator,
         )
