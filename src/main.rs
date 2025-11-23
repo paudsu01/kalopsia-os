@@ -24,27 +24,25 @@ pub fn panic(_info: &PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
     kalopsia_os::init(boot_info.physical_memory_offset);
-    use kalopsia_os::memory::{PTFlags, VirtualAddress, MEMORY};
 
     println!("Hello World!, ");
     println!("this is {}", "kalopsia-os");
 
+    example_mapping(boot_info);
+    kalopsia_os::hlt();
+}
+
+fn example_mapping(boot_info: &'static bootloader::BootInfo) {
     let mut frame_allocator = unsafe {
         kalopsia_os::memory::BootInfoFrameAllocator::init(usable_frames(&boot_info.memory_map))
     };
-
-    let addresses = [
-        0xb8000,
-        0x201008,
-        0x0100_0020_1a10,
-        boot_info.physical_memory_offset,
-        0xdeadbeaf000,
-    ];
-
+    use kalopsia_os::memory::{PTFlags, VirtualAddress, MEMORY};
+    //let address = boot_info.physical_memory_offset;
+    let address = 0x0;
     let x = MEMORY
         .lock()
         .map_4kib_page(
-            VirtualAddress::new(0xdeadbeaf000),
+            VirtualAddress::new(address),
             PhysicalAddress::new(0xb8000),
             PTFlags::Write | PTFlags::Present,
             &mut frame_allocator,
@@ -52,14 +50,6 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
         .unwrap();
     x.flush();
 
-    for address in addresses {
-        let virt = VirtualAddress::new(address);
-        let phys = MEMORY.lock().translate_address(virt);
-        println!("{:?} -> {:?}", address as *const u8, phys);
-    }
-
-    let page_ptr: *mut u64 = VirtualAddress::new(0xdeadbeaf000).as_u64() as *mut u64;
+    let page_ptr: *mut u64 = address as *mut u64;
     unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
-
-    kalopsia_os::hlt();
 }

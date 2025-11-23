@@ -122,18 +122,39 @@ fn force_get_lvl_1_page_table<'a, T: FrameAllocator<Size4KiB>>(
     let mut pte = current_page_table.get(c_index).unwrap();
 
     // If PTE is 0, we allocate a new frame so that the CPU can perform the traversal
-    if pte.is_unused() {
+    // If PTE is huge, we break it into smaller pages!
+    if pte.is_unused() || pte.is_huge() {
         // allocate a new frame
         let frame = _frame_allocator.allocate_frame();
         if frame.is_none() {
             return Err("Allocation for new frame failed. Unable to update mapping.");
         }
-        // zero out all PTEs
         let p_addr = frame.unwrap().start_address().as_u64();
         let v_addr = VirtualAddress::new(p_addr + _physical_memory_offset);
         let new_page_table = unsafe { &mut *(v_addr.as_u64() as *mut PageTable) };
-        unsafe {
-            new_page_table.zero_out();
+
+        // PTE = 0 case, zero out all entries
+        if pte.is_unused() {
+            unsafe {
+                new_page_table.zero_out();
+            }
+        } else {
+            // fill out all the entries of the new page table
+            // Essentially, we are breaking the large page of 2MiB into 4KiB pages or 1GiB into
+            // 2MiB pages!
+            // And, we are filling the new page table with the relevant PTEs.
+            let increment = match current_level {
+                3 => u64::pow(2, 21), // 21-bit offset now since we are breaking 1GiB into 512 of 2MiB pages
+                _ => u64::pow(2, 12), // case for current_level = 2
+            };
+            let mut current_physical_address = pte.as_physical_address(ptable_level).as_u64();
+            for entry_id in 0..512 {
+                new_page_table.set(
+                    entry_id,
+                    PageTableEntry::new(current_physical_address >> 12, flags),
+                )?;
+                current_physical_address += increment;
+            }
         }
         // update the current page table's pte entry to point to the new frame
         pte = PageTableEntry::new(p_addr >> 12, flags);
