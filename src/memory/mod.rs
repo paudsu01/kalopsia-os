@@ -12,7 +12,9 @@ mod addr_translation_tests;
 
 mod addr;
 mod frame_allocator;
+mod heap_allocator;
 pub use frame_allocator::{usable_frames, BootInfoFrameAllocator};
+pub use heap_allocator::{init_heap, HEAP_SIZE};
 mod page_table;
 pub use addr::{PhysicalAddress, VirtualAddress};
 pub use page_table::PTFlags;
@@ -74,7 +76,10 @@ impl Memory {
 
     /// map a 4KIB page vpn -> pfn in the page table based on the v_addr and p_addr provided
     /// v_addr and p_addr must be page aligned, the offset of the addr is ignored
-    pub fn map_4kib_page<T: FrameAllocator<Size4KiB>>(
+    /// # Safety
+    /// The user must provide guarantees that the mapping changes won't affect the offset page
+    /// table behavior or must be aware that there can be unexpected results
+    pub unsafe fn map_4kib_page<T: FrameAllocator<Size4KiB>>(
         &self,
         v_addr: VirtualAddress,
         p_addr: PhysicalAddress,
