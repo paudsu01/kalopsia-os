@@ -11,6 +11,8 @@ pub const HEAP_START: u64 = 0x_4444_4444_0000;
 /// Heap size: 1MiB: 2^20 bytes
 pub const HEAP_SIZE: u64 = u64::pow(2, 20);
 
+mod buddy;
+
 /// Map the assigned virtual memory region to physical frames
 #[allow(dead_code)]
 pub fn init_heap(frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<(), &'static str> {
