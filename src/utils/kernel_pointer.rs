@@ -1,13 +1,24 @@
 use core::marker::{Send, Sync};
 
+use crate::memory::VirtualAddress;
+
 /// A simple wrapper for a raw mutable pointer (`*mut T`)
 /// that manually asserts Send/Sync safety.
 ///
 /// This is typically done when a Spinlock or other external
 /// synchronization primitive guarantees that the access will be safe.
 #[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
 pub struct KernelPointer<T> {
-    ptr: *mut T,
+    pub ptr: *mut T,
+}
+
+impl<T> KernelPointer<T> {
+    pub fn new(vaddr: VirtualAddress) -> Self {
+        KernelPointer {
+            ptr: vaddr.as_u64() as *mut T,
+        }
+    }
 }
 
 // SAFETY: We assert that the data structure holding this pointer (example: for the Buddy Allocator)

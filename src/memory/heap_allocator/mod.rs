@@ -1,4 +1,5 @@
 use crate::memory::{FrameAllocator, PTFlags, PhysicalAddress, VirtualAddress, MEMORY};
+use crate::utils::KernelPointer;
 use x86_64::structures::paging::Size4KiB;
 
 /// Start of heap's virtual memory region
@@ -42,6 +43,8 @@ pub fn init_heap(frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<
         current_vaddr += four_kib;
     }
 
-    ALLOCATOR.lock().init(HEAP_START);
+    ALLOCATOR
+        .lock()
+        .init(KernelPointer::new(VirtualAddress::new(HEAP_START)));
     Ok(())
 }

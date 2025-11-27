@@ -1,13 +1,13 @@
-use crate::memory::VirtualAddress;
+use crate::{memory::VirtualAddress, utils::KernelPointer};
 
 /// Each free list's node contains the following information: `header`, `next` and `previous`.
 /// Doubly linked list approach used
 #[repr(C)]
-#[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
 pub struct BuddyNode {
-    header: BuddyHeader,
-    next: u64,     // null ptr(0) is no other node
-    previous: u64, // null ptr(0) is no other node
+    pub header: BuddyHeader,
+    pub next: KernelPointer<BuddyNode>,
+    pub previous: KernelPointer<BuddyNode>,
 }
 
 #[allow(dead_code)]
@@ -15,40 +15,16 @@ impl BuddyNode {
     pub fn new(size: u8, available: bool) -> Self {
         BuddyNode {
             header: BuddyHeader::new(size, available),
-            next: 0,
-            previous: 0,
+            next: KernelPointer::new(VirtualAddress::new(0x0)),
+            previous: KernelPointer::new(VirtualAddress::new(0x0)),
         }
-    }
-
-    pub fn next(&mut self) -> Option<&'static mut Self> {
-        if self.next == 0 {
-            None
-        } else {
-            unsafe { Some(BuddyNode::from_vaddr_ptr(VirtualAddress::new(self.next))) }
-        }
-    }
-
-    pub fn previous(&mut self) -> Option<&'static mut Self> {
-        if self.previous == 0 {
-            None
-        } else {
-            unsafe {
-                Some(BuddyNode::from_vaddr_ptr(VirtualAddress::new(
-                    self.previous,
-                )))
-            }
-        }
-    }
-
-    pub unsafe fn from_vaddr_ptr(addr: VirtualAddress) -> &'static mut Self {
-        unsafe { &mut *(addr.as_u64() as *mut BuddyNode) }
     }
 }
 
 /// bits 0-6: size, bit 7: available(1) or allocated(0)
 /// Size: if a block is 2^k bytes big, size is stored as `k`
-#[allow(dead_code)]
-struct BuddyHeader {
+#[derive(Debug, Clone, Copy)]
+pub struct BuddyHeader {
     header: u8,
 }
 
@@ -66,5 +42,13 @@ impl BuddyHeader {
 
     pub fn size(&self) -> u8 {
         self.header & 0b01111111
+    }
+
+    pub fn change_availability(&mut self, new_value: bool) {
+        *self = BuddyHeader::new(self.size(), new_value);
+    }
+
+    pub fn change_size(&mut self, new_size: u8) {
+        *self = BuddyHeader::new(new_size, self.is_available());
     }
 }
