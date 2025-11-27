@@ -1,17 +1,14 @@
 use crate::memory::{FrameAllocator, PTFlags, PhysicalAddress, VirtualAddress, MEMORY};
-use core::{
-    alloc::{GlobalAlloc, Layout},
-    ptr::null_mut,
-};
-
 use x86_64::structures::paging::Size4KiB;
 
 /// Start of heap's virtual memory region
 pub const HEAP_START: u64 = 0x_4444_4444_0000;
 /// Heap size: 1MiB: 2^20 bytes
-pub const HEAP_SIZE: u64 = u64::pow(2, 20);
+pub const HEAP_LOG_SIZE: u64 = 20;
+pub const HEAP_SIZE: u64 = u64::pow(2, HEAP_LOG_SIZE as u32);
 
 mod buddy;
+use buddy::ALLOCATOR;
 
 /// Map the assigned virtual memory region to physical frames
 #[allow(dead_code)]
@@ -45,26 +42,6 @@ pub fn init_heap(frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<
         current_vaddr += four_kib;
     }
 
-    unsafe {
-        ALLOCATOR
-            .lock()
-            .init(HEAP_START as usize, HEAP_SIZE as usize);
-    }
+    ALLOCATOR.lock().init(HEAP_START);
     Ok(())
 }
-
-use linked_list_allocator::LockedHeap;
-
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-
-// TODO: for later with my own allocator implementation
-//unsafe impl GlobalAlloc for BuddyAllocator {
-//    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-//        null_mut()
-//    }
-//
-//    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
-//        panic!("deallocation not supported");
-//    }
-//}
