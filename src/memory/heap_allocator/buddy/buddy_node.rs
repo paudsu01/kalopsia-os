@@ -15,40 +15,35 @@ impl BuddyNode {
     pub fn new(size: u8, available: bool) -> Self {
         BuddyNode {
             header: BuddyHeader::new(size, available),
-            next: KernelPointer::new(VirtualAddress::new(0x0)),
-            previous: KernelPointer::new(VirtualAddress::new(0x0)),
+            next: KernelPointer::new(VirtualAddress::null()),
+            previous: KernelPointer::new(VirtualAddress::null()),
         }
     }
 }
 
-/// bits 0-6: size, bit 7: available(1) or allocated(0)
 /// Size: if a block is 2^k bytes big, size is stored as `k`
+/// u8 would have been enough to store both information, but padding will be added anyways(58 bits), so
+/// might as well make them u32 each to change it easily
 #[derive(Debug, Clone, Copy)]
 pub struct BuddyHeader {
-    header: u8,
+    available: u32,
+    size: u32,
 }
 
 #[allow(dead_code)]
 impl BuddyHeader {
     pub fn new(size: u8, available: bool) -> Self {
         BuddyHeader {
-            header: ((available as u8) << 7 | size),
+            available: available as u32,
+            size: size as u32,
         }
     }
 
     pub fn is_available(&self) -> bool {
-        (self.header >> 7) == 1
+        self.available == 1
     }
 
     pub fn size(&self) -> u8 {
-        self.header & 0b01111111
-    }
-
-    pub fn change_availability(&mut self, new_value: bool) {
-        *self = BuddyHeader::new(self.size(), new_value);
-    }
-
-    pub fn change_size(&mut self, new_size: u8) {
-        *self = BuddyHeader::new(new_size, self.is_available());
+        self.size as u8
     }
 }
