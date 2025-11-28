@@ -26,8 +26,8 @@ impl BuddyNode {
 /// might as well make them u32 each to change it easily
 #[derive(Debug, Clone, Copy)]
 pub struct BuddyHeader {
-    available: u32,
-    size: u32,
+    pub available: u32,
+    pub size: u32,
 }
 
 #[allow(dead_code)]

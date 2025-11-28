@@ -52,51 +52,37 @@ impl BinaryBuddyAllocator {
 
     /// Recursive function
     fn request_block(&mut self, block_size_log: u8, index: u8) -> Option<KernelPointer<BuddyNode>> {
-        let free_list = self.free_lists[index as usize];
-        match free_list {
-            None => {
-                // base case
-                if block_size_log as u64 == HEAP_LOG_SIZE {
-                    None
-                // request a bigger block
-                // recursive case
-                } else {
-                    let bigger_block: KernelPointer<BuddyNode> =
-                        self.request_block(block_size_log + 1, index - 1)?;
-                    // split it into two (return `block_one`, and add `block_two` to the free list)
-                    let block_one = bigger_block;
-                    let block_two = BinaryBuddyAllocator::buddy_address(block_one, block_size_log);
-                    unsafe {
-                        *(block_one.ptr) = BuddyNode::new(block_size_log, false);
-                        *(block_two.ptr) = BuddyNode::new(block_size_log, true);
-                    }
-                    // add one back to the free list
-                    self.free_lists[index as usize] = Some(block_two);
-                    // return the other one to the user
-                    Some(block_one)
+        let free_list: Option<KernelPointer<BuddyNode>> = self.free_lists[index as usize];
+        if free_list.is_none() {
+            // base case
+            if block_size_log as u64 == HEAP_LOG_SIZE {
+                None
+            // request a bigger block
+            // recursive case
+            } else {
+                let bigger_block: KernelPointer<BuddyNode> =
+                    self.request_block(block_size_log + 1, index - 1)?;
+                // split it into two (return `block_one`, and add `block_two` to the free list)
+                let block_one = bigger_block;
+                let block_two = BinaryBuddyAllocator::buddy_address(block_one, block_size_log);
+                unsafe {
+                    *(block_one.ptr) = BuddyNode::new(block_size_log, false);
+                    *(block_two.ptr) = BuddyNode::new(block_size_log, true);
                 }
+                // add one back to the free list
+                self.free_lists[index as usize] = Some(block_two);
+                // return the other one to the user
+                Some(block_one)
             }
-            Some(kernel_pointer) => {
-                let node: *mut BuddyNode = kernel_pointer.ptr;
-                let next_node = unsafe { (*node).next };
-                // If no next node, this is the only block in this free list, so we return this one
-                if next_node.ptr.is_null() {
-                    self.free_lists[index as usize] = None;
-                } else {
-                    let next_node_ptr = next_node.ptr;
-                    unsafe {
-                        (*next_node_ptr).previous = KernelPointer::new(VirtualAddress::null());
-                    };
-                    self.free_lists[index as usize] = Some(next_node);
-                }
-                Some(kernel_pointer)
-            }
+        } else {
+            // pop the first block from the front of the free list
+            unsafe { self.pop(index) }
         }
     }
 
     /// Buddy address = buddy XOR 2^k, where 2^k is the size of the block
     /// Heap memory is thought of conceptually of size 1Mib starting from address 0.
-    pub fn buddy_address(
+    fn buddy_address(
         buddy_one: KernelPointer<BuddyNode>,
         size_log: u8,
     ) -> KernelPointer<BuddyNode> {
@@ -104,6 +90,88 @@ impl BinaryBuddyAllocator {
         let v_vaddr = ((buddy_one.ptr as u64) - offset) ^ (1 << size_log);
         let a_vaddr = v_vaddr + offset;
         KernelPointer::new(VirtualAddress::new(a_vaddr))
+    }
+
+    /// Pop's from the front of the free list
+    /// Free list is selected based on the `free_list_index`
+    /// Doesn't change any `BuddyHeader` values
+    unsafe fn pop(&mut self, free_list_index: u8) -> Option<KernelPointer<BuddyNode>> {
+        let index = free_list_index as usize;
+        if index >= self.free_lists.len() {
+            None
+        } else {
+            let node_kernel_pointer: KernelPointer<BuddyNode> = self.free_lists[index]?;
+            let node: *mut BuddyNode = node_kernel_pointer.ptr;
+            let next_node = unsafe { (*node).next };
+            // If no next node, this is the only block in this free list, so we return this one
+            if next_node.ptr.is_null() {
+                self.free_lists[index] = None;
+            } else {
+                let next_node_ptr = next_node.ptr;
+                unsafe {
+                    (*next_node_ptr).previous = KernelPointer::new(VirtualAddress::null());
+                };
+                self.free_lists[index] = Some(next_node);
+            }
+            Some(node_kernel_pointer)
+        }
+    }
+
+    /// Append a block to the front of its free list
+    /// Free list is selected based on the header info stored in the block itself!
+    /// Marks block as available
+    unsafe fn append(&mut self, node: KernelPointer<BuddyNode>) {
+        let node_ptr: *mut BuddyNode = node.ptr;
+        let size_log = unsafe { (*node_ptr).header.size() };
+        // Set block to available
+        unsafe { *node_ptr = BuddyNode::new(size_log, true) };
+
+        let index = self
+            .get_free_list_index(size_log)
+            // unwrap shouldn't fail
+            .expect("Free list index based on the size_log failed") as usize;
+
+        // Get the correct doubly linked free list based on the `index`
+        let head_node_ptr: Option<KernelPointer<BuddyNode>> = self.free_lists[index];
+
+        if let Some(head_node_ptr) = head_node_ptr {
+            let head_ptr = head_node_ptr.ptr;
+            unsafe {
+                (*head_ptr).previous = node;
+                (*node_ptr).next = head_node_ptr;
+            }
+        }
+        // Add to front of the free list
+        self.free_lists[index] = Some(node);
+    }
+
+    /// Removes the selected block from its free list
+    /// Unsafe because the user must guarantee that the block is already in its relevant free list
+    unsafe fn remove(
+        &mut self,
+        node_kernel_ptr: KernelPointer<BuddyNode>,
+    ) -> Option<KernelPointer<BuddyNode>> {
+        let ptr = node_kernel_ptr.ptr;
+        let previous_node = unsafe { (*ptr).previous };
+        let next_node = unsafe { (*ptr).next };
+        let previous_node_ptr = previous_node.ptr;
+        let next_node_ptr = next_node.ptr;
+
+        let index = {
+            let size_log = unsafe { (*ptr).header.size() };
+            self.get_free_list_index(size_log).unwrap()
+        };
+
+        // is at the beginning of the free list
+        if previous_node_ptr.is_null() {
+            unsafe { self.pop(index) }
+        } else {
+            unsafe { (*previous_node_ptr).next = next_node };
+            if !(next_node_ptr.is_null()) {
+                unsafe { (*next_node_ptr).previous = previous_node };
+            }
+            Some(node_kernel_ptr)
+        }
     }
 }
 
@@ -140,7 +208,18 @@ unsafe impl GlobalAlloc for MutexWrapper<BinaryBuddyAllocator> {
         }
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+        // read the size
+        // change it to available
+        // see buddy
+        // if buddy is available as well ->
+        // pop buddy from the free list
+        // merge them into one
+        // recursively handle it
+        // else{
+        // add it to the free list
+        // }
+    }
 }
 
 /// Very trivial way to do it but its fine for now

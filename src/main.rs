@@ -3,7 +3,6 @@
 
 extern crate alloc;
 
-use alloc::boxed::Box;
 use core::panic::PanicInfo;
 use x86_64::structures::paging::{FrameAllocator, Size4KiB};
 
