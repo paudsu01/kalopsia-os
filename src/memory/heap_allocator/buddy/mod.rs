@@ -80,6 +80,43 @@ impl BinaryBuddyAllocator {
         }
     }
 
+    fn free_block(&mut self, buddy_one: KernelPointer<BuddyNode>) {
+        let buddy_one_ptr = buddy_one.ptr;
+        let buddy_size_log = unsafe { (*buddy_one_ptr).header.size() };
+
+        // base case: cannot merge max sized block
+        if (buddy_size_log as u64) == HEAP_LOG_SIZE {
+            unsafe {
+                self.append(buddy_one);
+            }
+            return;
+        }
+
+        // get the buddy otherwise
+        let buddy_two = BinaryBuddyAllocator::buddy_address(buddy_one, buddy_size_log);
+        let buddy_two_ptr = buddy_two.ptr;
+
+        let buddy_two_available = unsafe { (*buddy_two_ptr).header.is_available() };
+        if buddy_two_available {
+            // if it is available, it must be in a free list
+            // remove from the free list
+            unsafe {
+                self.remove(buddy_two)
+                    .expect("buddy was marked available but not found in free list");
+            }
+            // merge the two buddies into one big block
+            let big_block: KernelPointer<BuddyNode> =
+                unsafe { self.merge(buddy_one, buddy_two, buddy_size_log) };
+            // recursively try to free the bigger block
+            self.free_block(big_block);
+        } else {
+            // if buddy is not available(free), just append the block to its relevant free list
+            unsafe {
+                self.append(buddy_one);
+            }
+        }
+    }
+
     /// Buddy address = buddy XOR 2^k, where 2^k is the size of the block
     /// Heap memory is thought of conceptually of size 1Mib starting from address 0.
     fn buddy_address(
@@ -87,7 +124,7 @@ impl BinaryBuddyAllocator {
         size_log: u8,
     ) -> KernelPointer<BuddyNode> {
         let offset = HEAP_START;
-        let v_vaddr = ((buddy_one.ptr as u64) - offset) ^ (1 << size_log);
+        let v_vaddr = ((buddy_one.ptr as u64) - offset) ^ (1_u64 << size_log);
         let a_vaddr = v_vaddr + offset;
         KernelPointer::new(VirtualAddress::new(a_vaddr))
     }
@@ -173,6 +210,27 @@ impl BinaryBuddyAllocator {
             Some(node_kernel_ptr)
         }
     }
+
+    unsafe fn merge(
+        &mut self,
+        buddy_one: KernelPointer<BuddyNode>,
+        buddy_two: KernelPointer<BuddyNode>,
+        size_log: u8,
+    ) -> KernelPointer<BuddyNode> {
+        unsafe {
+            // see which buddy is smaller
+            if buddy_one.ptr < buddy_two.ptr {
+                // delete(zero-out) the node info from the other buddy
+                *(buddy_two.ptr) = BuddyNode::new(0, false);
+                *(buddy_one.ptr) = BuddyNode::new(size_log + 1, true);
+                buddy_one
+            } else {
+                *(buddy_one.ptr) = BuddyNode::new(0, false);
+                *(buddy_two.ptr) = BuddyNode::new(size_log + 1, true);
+                buddy_two
+            }
+        }
+    }
 }
 
 // Map the assigned virtual memory region to physical frames
@@ -209,16 +267,15 @@ unsafe impl GlobalAlloc for MutexWrapper<BinaryBuddyAllocator> {
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // read the size
-        // change it to available
-        // see buddy
-        // if buddy is available as well ->
-        // pop buddy from the free list
-        // merge them into one
-        // recursively handle it
-        // else{
-        // add it to the free list
-        // }
+        let mut buddy_allocator = self.lock();
+
+        // get the start ptr of the block where the header info is
+        let size_of_header = core::mem::size_of::<BuddyHeader>();
+        let buddy_node_ptr = unsafe { _ptr.offset(-(size_of_header as isize)) } as *mut BuddyNode;
+
+        let buddy_node_kernel_ptr = KernelPointer::new(VirtualAddress::new(buddy_node_ptr as u64));
+        // recursively free the block coalescing into bigger blocks if possible
+        buddy_allocator.free_block(buddy_node_kernel_ptr);
     }
 }
 
