@@ -14,9 +14,15 @@ pub struct VirtualAddress {
 ///  |------------------| --------- | --------- | --------- | --------- | ------------ |
 ///  | Sign Extension   |  L4 index |  L3 index | L2 index  | L1 index  | Offset       |
 impl VirtualAddress {
-    pub fn new(addr: u64) -> Self {
+    pub const fn new(addr: u64) -> Self {
         VirtualAddress {
             addr: (addr as *const u8),
+        }
+    }
+
+    pub const fn null() -> Self {
+        VirtualAddress {
+            addr: core::ptr::null(),
         }
     }
 

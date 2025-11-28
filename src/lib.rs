@@ -7,6 +7,9 @@
 // For the "x86-interrupt" calling convention which is unstable
 #![feature(abi_x86_interrupt)]
 
+// Add dependency to the built-in `alloc` crate
+extern crate alloc;
+
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
