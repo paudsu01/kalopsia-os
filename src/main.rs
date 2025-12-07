@@ -39,11 +39,10 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
 
     example_mapping(&mut frame_allocator);
     let mut executor = Executor::new();
-    executor.add(Task::new(read_time()));
-    executor.add(Task::new(async_add_10(20)));
-    executor.add(Task::new(print_keypress()));
+    executor.spawn_task(Task::new(read_time()));
+    executor.spawn_task(Task::new(async_add_10(20)));
+    executor.spawn_task(Task::new(print_keypress()));
     executor.run();
-    kalopsia_os::hlt();
 }
 
 fn example_mapping(frame_allocator: &mut impl FrameAllocator<Size4KiB>) {

@@ -2,6 +2,7 @@ use crate::println;
 use crate::utils::Port;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Time {
     hour: u8,
     minute: u8,
