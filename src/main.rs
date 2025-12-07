@@ -9,9 +9,10 @@ use x86_64::structures::paging::{FrameAllocator, Size4KiB};
 use kalopsia_os::{
     interrupts,
     memory::{usable_frames, PhysicalAddress},
-    println,
-    scheduler::{task::keyboard::print_keypress, Executor, Task},
+    println, scheduler,
 };
+use scheduler::task::{keyboard::print_keypress, time::read_time};
+use scheduler::{Executor, Task};
 
 // Custom panic handler since std lib is disabled
 #[panic_handler]
@@ -38,6 +39,7 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
 
     example_mapping(&mut frame_allocator);
     let mut executor = Executor::new();
+    executor.add(Task::new(read_time()));
     executor.add(Task::new(async_add_10(20)));
     executor.add(Task::new(print_keypress()));
     executor.run();
