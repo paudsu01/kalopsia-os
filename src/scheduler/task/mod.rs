@@ -3,6 +3,8 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
+pub mod keyboard;
+
 #[allow(dead_code)]
 pub struct Task {
     future: Pin<Box<dyn Future<Output = ()>>>,

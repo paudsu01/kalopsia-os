@@ -23,6 +23,11 @@ version="0.3.12"
 default-features=false
 features=["alloc"]
 
+[dependencies.futures-util]
+version = "0.3.31"
+default-features = false
+features = ["alloc"]
+
 # Exit qemu after testing. Qemu will exit when port 0x74 gets some exit status code
 # The exit status code will be (value << 1) | 1
 # If tests run successfully, we store 0x10(16 in base 10), so the exit code will be (32 | 1 = 33(base 10)) = 0x21

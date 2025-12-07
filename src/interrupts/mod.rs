@@ -1,3 +1,5 @@
+use crate::scheduler::task::keyboard::scancode_stream::SCANCODE_QUEUE;
+use crate::utils::Port;
 use crate::{print, println};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
@@ -38,7 +40,7 @@ pub fn init_handlers(idt: &mut InterruptDescriptorTable) {
     }
     idt.page_fault.set_handler_fn(page_fault_handler);
     idt[pic::Interrupts::Timer as u8].set_handler_fn(timer_interrupt_handler);
-    idt[pic::Interrupts::Keyboard as u8].set_handler_fn(keyboard::keyboard_interrupt_handler);
+    idt[pic::Interrupts::Keyboard as u8].set_handler_fn(keyboard_interrupt_handler);
 }
 
 /* For all the exception handlers, the x86-interrupt calling convention hides most details of
@@ -75,4 +77,11 @@ extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
 
-pub mod keyboard;
+pub extern "x86-interrupt" fn keyboard_interrupt_handler(_frame: InterruptStackFrame) {
+    let mut port = Port::new(0x60);
+    let scancode: u8 = port.readb();
+
+    // add to scancode queue
+    SCANCODE_QUEUE.push(scancode);
+    PICS.lock().end_of_interrupt(Interrupts::Keyboard as u8);
+}

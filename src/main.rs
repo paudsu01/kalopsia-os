@@ -10,7 +10,7 @@ use kalopsia_os::{
     interrupts,
     memory::{usable_frames, PhysicalAddress},
     println,
-    scheduler::{Executor, Task},
+    scheduler::{task::keyboard::print_keypress, Executor, Task},
 };
 
 // Custom panic handler since std lib is disabled
@@ -39,6 +39,7 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
     example_mapping(&mut frame_allocator);
     let mut executor = Executor::new();
     executor.add(Task::new(async_add_10(20)));
+    executor.add(Task::new(print_keypress()));
     executor.run();
     kalopsia_os::hlt();
 }

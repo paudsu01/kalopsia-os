@@ -37,7 +37,7 @@ pub fn init(physical_memory_offset: u64, frame_allocator: &mut impl FrameAllocat
 
 // Init keyboard scancode queue for now but want to expand this to init all drivers
 pub fn drivers_init() {
-    use interrupts::keyboard::scancode_stream;
+    use scheduler::task::keyboard::scancode_stream;
     scancode_stream::init();
 }
 
