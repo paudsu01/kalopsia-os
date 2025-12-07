@@ -3,8 +3,8 @@ use crate::scheduler::task::{TaskId, TaskWaker};
 use crate::scheduler::Task;
 use alloc::collections::btree_map::BTreeMap;
 use alloc::sync::Arc;
-use core::task::Context;
 use core::task::Poll;
+use core::task::{Context, Waker};
 use crossbeam_queue::ArrayQueue;
 
 // "Scheduler" for kalopsia-os
@@ -14,6 +14,7 @@ pub struct Executor {
     tasks_queue: Arc<ArrayQueue<TaskId>>,
     // all the tasks
     tasks: BTreeMap<TaskId, Task>,
+    waker_cache: BTreeMap<TaskId, Waker>,
 }
 
 #[allow(dead_code)]
@@ -28,6 +29,7 @@ impl Executor {
         Executor {
             tasks: BTreeMap::new(),
             tasks_queue: Arc::new(ArrayQueue::new(200)),
+            waker_cache: BTreeMap::new(),
         }
     }
 
@@ -61,17 +63,25 @@ impl Executor {
     }
 
     fn run_ready_tasks(&mut self) {
+        // credit: https://os.phil-opp.com/async-await/#running-tasks
         while let Some(task_id) = self.tasks_queue.pop() {
-            let waker = TaskWaker::new_waker(task_id, Arc::clone(&self.tasks_queue));
-            let mut cx = Context::from_waker(&waker);
-            // Run the `task` until it needs to `wait` (i.e Pending)
-            let task = self
-                .tasks
-                .get_mut(&task_id)
-                .expect("Task should be present");
-            match task.poll(&mut cx) {
-                Poll::Ready(()) => {} // task done
-                Poll::Pending => {}   // do nothing (waker will add it back)
+            let task = match self.tasks.get_mut(&task_id) {
+                Some(task) => task,
+                None => continue, // task no longer exists
+            };
+            let waker = self
+                .waker_cache
+                .entry(task_id)
+                .or_insert_with(|| TaskWaker::new_waker(task_id, Arc::clone(&self.tasks_queue)));
+            let mut context = Context::from_waker(waker);
+            // poll the `future` to make any potential progress
+            match task.poll(&mut context) {
+                Poll::Ready(()) => {
+                    // task done -> remove it and its cached waker
+                    self.tasks.remove(&task_id);
+                    self.waker_cache.remove(&task_id);
+                }
+                Poll::Pending => {} // do nothing (waker will add it back)
             }
         }
     }

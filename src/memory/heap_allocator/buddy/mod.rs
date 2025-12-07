@@ -234,9 +234,14 @@ impl BinaryBuddyAllocator {
 }
 
 // Map the assigned virtual memory region to physical frames
+// TODO: NEED TO FIX BUG: Header size is zero sometimes
+//#[global_allocator]
+//pub static ALLOCATOR: MutexWrapper<BinaryBuddyAllocator> =
+//    MutexWrapper::new(BinaryBuddyAllocator::new());
+
+use linked_list_allocator::LockedHeap;
 #[global_allocator]
-pub static ALLOCATOR: MutexWrapper<BinaryBuddyAllocator> =
-    MutexWrapper::new(BinaryBuddyAllocator::new());
+pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 unsafe impl GlobalAlloc for MutexWrapper<BinaryBuddyAllocator> {
     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
