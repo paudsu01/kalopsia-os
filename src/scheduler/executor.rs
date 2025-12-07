@@ -1,3 +1,4 @@
+use crate::interrupts;
 use crate::scheduler::task::{TaskId, TaskWaker};
 use crate::scheduler::Task;
 use alloc::collections::btree_map::BTreeMap;
@@ -43,18 +44,34 @@ impl Executor {
     pub fn run(&mut self) -> ! {
         // The idea is use this as a global executor for polling all futures in the system until they are finished !!!
         loop {
-            while let Some(task_id) = self.tasks_queue.pop() {
-                let waker = TaskWaker::new_waker(task_id, Arc::clone(&self.tasks_queue));
-                let mut cx = Context::from_waker(&waker);
-                // Run the `task` until it needs to `wait` (i.e Pending)
-                let task = self
-                    .tasks
-                    .get_mut(&task_id)
-                    .expect("Task should be present");
-                match task.poll(&mut cx) {
-                    Poll::Ready(()) => {} // task done
-                    Poll::Pending => {}   // do nothing (waker will add it back)
-                }
+            self.run_ready_tasks();
+            self.sleep();
+        }
+    }
+
+    pub fn sleep(&mut self) {
+        // Task could be `woken` up at this point(after this function was called)
+        // So, we verify by disabling interrupts and checking if tasks queue is empty or not!
+        interrupts::disable();
+        if self.tasks_queue.is_empty() {
+            x86_64::instructions::interrupts::enable_and_hlt();
+        } else {
+            interrupts::enable();
+        }
+    }
+
+    fn run_ready_tasks(&mut self) {
+        while let Some(task_id) = self.tasks_queue.pop() {
+            let waker = TaskWaker::new_waker(task_id, Arc::clone(&self.tasks_queue));
+            let mut cx = Context::from_waker(&waker);
+            // Run the `task` until it needs to `wait` (i.e Pending)
+            let task = self
+                .tasks
+                .get_mut(&task_id)
+                .expect("Task should be present");
+            match task.poll(&mut cx) {
+                Poll::Ready(()) => {} // task done
+                Poll::Pending => {}   // do nothing (waker will add it back)
             }
         }
     }

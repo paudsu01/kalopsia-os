@@ -21,7 +21,7 @@ pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
     kalopsia_os::memory::init_heap(&mut frame_allocator).expect("Init: Heap init failed");
     // Run test
     test_main();
-    kalopsia_os::hlt();
+    kalopsia_os::stop();
 }
 
 #[panic_handler]

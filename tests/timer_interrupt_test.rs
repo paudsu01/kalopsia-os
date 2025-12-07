@@ -30,7 +30,7 @@ pub extern "C" fn _start() -> ! {
 
     kalopsia_os::interrupts::init_pics();
     kalopsia_os::interrupts::enable();
-    kalopsia_os::hlt();
+    kalopsia_os::stop();
 }
 
 #[panic_handler]

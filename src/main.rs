@@ -19,7 +19,7 @@ use scheduler::{Executor, Task};
 pub fn panic(_info: &PanicInfo) -> ! {
     interrupts::disable();
     println!("{_info}");
-    kalopsia_os::hlt();
+    kalopsia_os::stop();
 }
 
 /** `_start` function

@@ -41,7 +41,7 @@ pub fn drivers_init() {
     scancode_stream::init();
 }
 
-pub fn hlt() -> ! {
+pub fn stop() -> ! {
     loop {
         x86_64::instructions::hlt();
     }
@@ -56,14 +56,14 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
     };
     init(boot_info.physical_memory_offset, &mut frame_allocator);
     test_main();
-    hlt();
+    stop();
 }
 
 pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QEMUExitCode::Failure);
-    hlt();
+    stop();
 }
 
 #[cfg(test)]
