@@ -75,4 +75,4 @@ extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
 
-mod keyboard;
+pub mod keyboard;

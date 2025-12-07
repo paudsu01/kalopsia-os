@@ -7,6 +7,8 @@ use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 use spin::Mutex;
 use x86_64::structures::idt::InterruptStackFrame;
 
+pub mod scancode_stream;
+
 lazy_static! {
     pub static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new({
         Keyboard::new(
