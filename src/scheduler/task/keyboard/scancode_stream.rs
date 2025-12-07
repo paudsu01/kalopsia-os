@@ -1,4 +1,4 @@
-use crate::println;
+use crate::{println, scheduler::task::keyboard::KEYBOARD_WAKER};
 use core::{
     pin::Pin,
     task::{Context, Poll},
@@ -25,10 +25,8 @@ impl ScancodeQueue {
         }
     }
 
-    pub fn push(&self, value: u8) {
-        if self.queue.push(value).is_err() {
-            println!("Scancode queue is full! Dropping input");
-        }
+    pub fn push(&self, value: u8) -> Result<(), u8> {
+        self.queue.push(value)
     }
 
     pub fn pop(&self) -> Option<u8> {
@@ -49,10 +47,21 @@ pub struct Scancode;
 
 impl Future for Scancode {
     type Output = u8;
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<u8> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<u8> {
+        // fast path: scancode already available (queue not empty)
+        if let Some(value) = SCANCODE_QUEUE.pop() {
+            return Poll::Ready(value);
+        }
+
+        // queue **potentially** empty (interrupt might have added something to the queue)
+        KEYBOARD_WAKER.register(cx.waker());
         match SCANCODE_QUEUE.pop() {
+            // Keyboard interrupt occured and added something to the queue
+            Some(value) => {
+                KEYBOARD_WAKER.take();
+                Poll::Ready(value)
+            }
             None => Poll::Pending,
-            Some(v) => Poll::Ready(v),
         }
     }
 }

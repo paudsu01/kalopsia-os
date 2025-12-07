@@ -1,4 +1,4 @@
-use crate::scheduler::task::keyboard::scancode_stream::SCANCODE_QUEUE;
+use crate::scheduler::task::keyboard::{scancode_stream::SCANCODE_QUEUE, KEYBOARD_WAKER};
 use crate::utils::Port;
 use crate::{print, println};
 use lazy_static::lazy_static;
@@ -82,6 +82,11 @@ pub extern "x86-interrupt" fn keyboard_interrupt_handler(_frame: InterruptStackF
     let scancode: u8 = port.readb();
 
     // add to scancode queue
-    SCANCODE_QUEUE.push(scancode);
+    if SCANCODE_QUEUE.push(scancode).is_ok() {
+        // wake up any potential pending future
+        KEYBOARD_WAKER.wake();
+    } else {
+        println!("Scancode queue is full! Dropping input");
+    }
     PICS.lock().end_of_interrupt(Interrupts::Keyboard as u8);
 }

@@ -2,6 +2,7 @@ use crate::print;
 use crate::scheduler::task::keyboard::scancode_stream::SCANCODE_QUEUE;
 use lazy_static::lazy_static;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use futures_util::task::AtomicWaker;
 use spin::Mutex;
 
 pub mod scancode_stream;
@@ -15,6 +16,9 @@ lazy_static! {
         )
     });
 }
+
+
+pub static KEYBOARD_WAKER: AtomicWaker = AtomicWaker::new();
 
 pub async fn print_keypress(){ 
     loop {
