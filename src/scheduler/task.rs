@@ -18,12 +18,8 @@ impl Task {
             future: Box::pin(future),
         }
     }
-}
 
-impl Future for Task {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         self.future.as_mut().poll(cx)
     }
 }

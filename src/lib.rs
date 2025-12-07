@@ -13,6 +13,7 @@ extern crate alloc;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
+pub mod scheduler;
 pub mod test_framework;
 pub mod utils;
 pub mod vga_buffer;
