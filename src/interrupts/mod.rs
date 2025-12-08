@@ -1,6 +1,7 @@
 use crate::scheduler::task::keyboard::{scancode_stream::SCANCODE_QUEUE, KEYBOARD_WAKER};
+use crate::scheduler::task::time::DATETIME_WAKER;
 use crate::utils::Port;
-use crate::{print, println, timer_print};
+use crate::{println, timer_print};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
@@ -74,6 +75,8 @@ extern "x86-interrupt" fn page_fault_handler(
 
 extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
     timer_print!(".");
+    // wake up `datetime` task to print the current time
+    DATETIME_WAKER.wake();
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
 

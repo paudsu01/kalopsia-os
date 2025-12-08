@@ -1,3 +1,5 @@
+// Abstraction to print `.` during timer interrupts
+// Manages the last row of the VGA Buffer
 use super::super::{ColorMode, TextColor, VGABuffer, VGAChar, VGA_COLS};
 use super::VGAByteWriter;
 use crate::vga_buffer::VGA_ROWS;

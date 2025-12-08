@@ -114,5 +114,6 @@ impl VGABuffer {
 }
 
 mod writer;
+pub use writer::datetime_writer::_datetime_print;
 pub use writer::main_writer::_print;
 pub use writer::timer_writer::_timer_print;

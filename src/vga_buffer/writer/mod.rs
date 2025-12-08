@@ -1,3 +1,4 @@
+#[allow(unused)]
 pub trait VGAByteWriter {
     fn write_byte(&mut self, byte: u8);
 
@@ -8,11 +9,10 @@ pub trait VGAByteWriter {
     }
 
     fn write_string(&mut self, string: &str) {
-        for byte in string.bytes() {
-            self.write_byte(byte);
-        }
+        self.write_bytes(string.as_bytes());
     }
 }
 
+pub mod datetime_writer;
 pub mod main_writer;
 pub mod timer_writer;

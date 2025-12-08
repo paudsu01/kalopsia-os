@@ -1,4 +1,4 @@
-use crate::{println, scheduler::task::keyboard::KEYBOARD_WAKER};
+use crate::scheduler::task::keyboard::KEYBOARD_WAKER;
 use core::{
     pin::Pin,
     task::{Context, Poll},

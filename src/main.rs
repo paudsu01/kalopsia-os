@@ -11,7 +11,7 @@ use kalopsia_os::{
     memory::{usable_frames, PhysicalAddress},
     println, scheduler,
 };
-use scheduler::task::{keyboard::print_keypress, time::read_time};
+use scheduler::task::{keyboard::print_keypress, time::current_time};
 use scheduler::{Executor, Task};
 
 // Custom panic handler since std lib is disabled
@@ -39,7 +39,7 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
 
     example_mapping(&mut frame_allocator);
     let mut executor = Executor::new();
-    executor.spawn_task(Task::new(read_time()));
+    executor.spawn_task(Task::new(current_time()));
     executor.spawn_task(Task::new(async_add_10(20)));
     executor.spawn_task(Task::new(print_keypress()));
     executor.run();
