@@ -9,7 +9,9 @@ use crossbeam_queue::ArrayQueue;
 
 static TASK_ID: AtomicU64 = AtomicU64::new(0);
 
+// All tasks
 pub mod keyboard;
+pub mod shell;
 pub mod time;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

@@ -2,7 +2,7 @@ use super::super::{ColorMode, TextColor, VGABuffer, VGAChar, VGA_COLS};
 use super::VGAByteWriter;
 use crate::vga_buffer::VGA_ROWS;
 
-struct VGAWriter {
+pub struct VGAWriter {
     row: u16,
     col: u16,
     color: ColorMode,
@@ -46,9 +46,13 @@ impl VGAWriter {
         VGAWriter {
             row: 0,
             col: 0,
-            color: ColorMode::new(TextColor::Green, TextColor::Black, false),
+            color: ColorMode::new(TextColor::White, TextColor::Black, false),
             buffer: VGABuffer,
         }
+    }
+
+    pub fn change_text_color(&mut self, color: TextColor) {
+        self.color = ColorMode::new(color, TextColor::Black, false);
     }
 }
 
@@ -68,7 +72,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 lazy_static! {
-    static ref VGA_WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new());
+    pub static ref VGA_WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new());
 }
 // Macro defs for printing stuff to the screen
 // Used phil opp's macro defs: https://os.phil-opp.com/vga-text-mode/#a-println-macro

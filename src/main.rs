@@ -11,7 +11,7 @@ use kalopsia_os::{
     memory::{usable_frames, PhysicalAddress},
     println, scheduler,
 };
-use scheduler::task::{keyboard::print_keypress, time::current_time};
+use scheduler::task::{shell::shell, time::current_time};
 use scheduler::{Executor, Task};
 
 // Custom panic handler since std lib is disabled
@@ -34,14 +34,10 @@ pub extern "C" fn _start(boot_info: &'static bootloader::BootInfo) -> ! {
     };
     kalopsia_os::init(boot_info.physical_memory_offset, &mut frame_allocator);
 
-    println!("Hello World!, ");
-    println!("this is {}", "kalopsia-os");
-
     example_mapping(&mut frame_allocator);
     let mut executor = Executor::new();
     executor.spawn_task(Task::new(current_time()));
-    executor.spawn_task(Task::new(async_add_10(20)));
-    executor.spawn_task(Task::new(print_keypress()));
+    executor.spawn_task(Task::new(shell()));
     executor.run();
 }
 
@@ -64,13 +60,4 @@ fn example_mapping(frame_allocator: &mut impl FrameAllocator<Size4KiB>) {
 
     let page_ptr: *mut u64 = address as *mut u64;
     unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
-}
-
-async fn async_10() -> usize {
-    10
-}
-
-async fn async_add_10(value: usize) {
-    let x = async_10().await;
-    println!("The async number is : {}", x + value);
 }

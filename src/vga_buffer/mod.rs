@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
-enum TextColor {
+pub enum TextColor {
     Black = 0x0,
     Blue = 0x1,
     Green = 0x2,
@@ -116,4 +116,5 @@ impl VGABuffer {
 mod writer;
 pub use writer::datetime_writer::_datetime_print;
 pub use writer::main_writer::_print;
+pub use writer::main_writer::VGA_WRITER;
 pub use writer::timer_writer::_timer_print;
