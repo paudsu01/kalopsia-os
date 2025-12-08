@@ -7,6 +7,8 @@ pub struct VGAWriter {
     col: u16,
     color: ColorMode,
     buffer: VGABuffer,
+    pub escape_print: bool, // if on, it will act like every string to print has a '\r' in front, clears
+                            // the current row and print
 }
 
 impl VGAByteWriter for VGAWriter {
@@ -48,6 +50,7 @@ impl VGAWriter {
             col: 0,
             color: ColorMode::new(TextColor::White, TextColor::Black, false),
             buffer: VGABuffer,
+            escape_print: false,
         }
     }
 
@@ -101,7 +104,12 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
 
     interrupts::without_interrupts(|| {
-        VGA_WRITER.lock().write_fmt(args).unwrap();
+        let mut writer = VGA_WRITER.lock();
+        if writer.escape_print {
+            writer.buffer.clear_row(writer.row);
+            writer.col = 0;
+        }
+        writer.write_fmt(args).unwrap();
     });
 }
 

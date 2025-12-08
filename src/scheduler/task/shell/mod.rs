@@ -6,6 +6,7 @@ use crate::{print, println};
 mod subtasks;
 use alloc::string::ToString;
 use subtasks::CommandRegistry;
+pub use subtasks::INTERRUPT_COUNTER_WAKER;
 
 pub async fn shell() {
     // All supported 'commands'

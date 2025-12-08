@@ -59,5 +59,7 @@ fn example_mapping(frame_allocator: &mut impl FrameAllocator<Size4KiB>) {
     }
 
     let page_ptr: *mut u64 = address as *mut u64;
-    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
+    unsafe { page_ptr.offset(400).write_volatile(0x_f070_f070_f061_f048) };
+    unsafe { page_ptr.offset(401).write_volatile(0x_f069_f046_f020_f079) };
+    unsafe { page_ptr.offset(402).write_volatile(0x_f073_f06c_f061_f06e) };
 }

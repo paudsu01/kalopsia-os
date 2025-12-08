@@ -6,6 +6,8 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 mod ascii_print;
+mod interrupt_counter;
+pub use interrupt_counter::INTERRUPT_COUNTER_WAKER;
 mod memdump;
 pub use ascii_print::pretty_echo_command;
 mod basic_subtasks;
@@ -81,6 +83,12 @@ pub fn load() -> CommandRegistry {
         "memdump",
         "Dumps memory(can crash!) Usage: memdump addr bytes",
         Box::new(|args| SubTask(Task::new(memdump::memdump_command(args)))),
+    );
+
+    registry.register(
+        "int-count",
+        "count the number of interrupts in the system. Press `q` to exit",
+        Box::new(|_args| SubTask(Task::new(interrupt_counter::int_count_command()))),
     );
 
     registry

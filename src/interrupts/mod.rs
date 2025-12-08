@@ -1,7 +1,9 @@
 use crate::scheduler::task::keyboard::{scancode_stream::SCANCODE_QUEUE, KEYBOARD_WAKER};
+use crate::scheduler::task::shell::INTERRUPT_COUNTER_WAKER;
 use crate::scheduler::task::time::DATETIME_WAKER;
 use crate::utils::Port;
 use crate::{println, timer_print};
+use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
@@ -12,6 +14,9 @@ pub use pic::{init_pics, Interrupts, PICS};
 mod utils;
 pub use utils::without_interrupts;
 pub use utils::{disable, enable};
+
+pub static TIMER_INTERRUPTS_COUNT: AtomicU64 = AtomicU64::new(0);
+pub static KEYBOARD_INTERRUPTS_COUNT: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(test)]
 mod interrupts_tests;
@@ -75,14 +80,17 @@ extern "x86-interrupt" fn page_fault_handler(
 
 extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
     timer_print!(".");
+    TIMER_INTERRUPTS_COUNT.fetch_add(1, Ordering::Relaxed);
     // wake up `datetime` task to print the current time
     DATETIME_WAKER.wake();
+    INTERRUPT_COUNTER_WAKER.wake();
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
 
 pub extern "x86-interrupt" fn keyboard_interrupt_handler(_frame: InterruptStackFrame) {
     let mut port = Port::new(0x60);
     let scancode: u8 = port.readb();
+    KEYBOARD_INTERRUPTS_COUNT.fetch_add(1, Ordering::Relaxed);
 
     // add to scancode queue
     if SCANCODE_QUEUE.push(scancode).is_ok() {

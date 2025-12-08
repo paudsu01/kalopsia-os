@@ -22,19 +22,13 @@ lazy_static! {
 pub static KEYBOARD_WAKER: AtomicWaker = AtomicWaker::new();
 
 pub async fn get_line() -> String{ 
-    let mut keyboard = KEYBOARD.lock();
     let mut word = String::new();
     // keep adding scancodes until we get a `\n` character
     loop {
         let scancode = SCANCODE_QUEUE.next().await;
         // process the scancode to get the char
-        if let Ok(op_keyevent) = keyboard.add_byte(scancode) && let Some(keyevent) = op_keyevent && let Some(keyvalue) = keyboard.process_keyevent(keyevent) {
-            let character = if let DecodedKey::Unicode(character) = keyvalue {
-                character
-            } else {
-                '\u{2764}'
-            };
-            
+        let character = convert_scancode(scancode);
+        if let Some(character) = character{
             print!("{}", character);
             // return word if `\n`
             if character != '\n'{
@@ -43,5 +37,18 @@ pub async fn get_line() -> String{
                 return word;
             }
         }
+    }
+}
+
+pub fn convert_scancode(code: u8) -> Option<char>{
+    let mut keyboard = KEYBOARD.lock();
+    if let Ok(op_keyevent) = keyboard.add_byte(code) && let Some(keyevent) = op_keyevent && let Some(keyvalue) = keyboard.process_keyevent(keyevent) {
+        if let DecodedKey::Unicode(character) = keyvalue {
+            Some(character)
+        } else {
+            Some('\u{2764}')
+        }
+    } else {
+        None
     }
 }
