@@ -40,5 +40,6 @@ run-command = ["qemu-system-x86_64",
             "-drive", "format=raw,file={}",
             "-rtc", "base=localtime",
             "-audiodev", "coreaudio,id=spk",
-            "-machine", "pcspk-audiodev=spk"]
+            "-machine", "pcspk-audiodev=spk",
+            "-full-screen"]
 test-success-exit-code = 33

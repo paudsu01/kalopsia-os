@@ -6,6 +6,6 @@ pub async fn echo(args: String) {
     crate::println!("{}", args);
 }
 
-pub async fn clear(_args: String) {
+pub async fn clear() {
     VGA_WRITER.lock().clear_screen();
 }

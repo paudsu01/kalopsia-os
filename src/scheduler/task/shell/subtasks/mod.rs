@@ -6,6 +6,8 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 mod ascii_print;
+mod memdump;
+pub use ascii_print::pretty_echo_command;
 mod basic_subtasks;
 mod sound;
 
@@ -60,7 +62,7 @@ pub fn load() -> CommandRegistry {
     registry.register(
         "clear",
         "clear the screen",
-        Box::new(|args| SubTask(Task::new(basic_subtasks::clear(args)))),
+        Box::new(|_args| SubTask(Task::new(basic_subtasks::clear()))),
     );
 
     registry.register(
@@ -73,6 +75,12 @@ pub fn load() -> CommandRegistry {
         "pecho",
         "pretty version of echo",
         Box::new(|args| SubTask(Task::new(ascii_print::pretty_echo_command(args)))),
+    );
+
+    registry.register(
+        "memdump",
+        "Dumps memory(can crash!) Usage: memdump addr bytes",
+        Box::new(|args| SubTask(Task::new(memdump::memdump_command(args)))),
     );
 
     registry

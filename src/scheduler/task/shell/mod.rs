@@ -1,13 +1,16 @@
 use crate::scheduler::task::keyboard::get_line;
+use crate::scheduler::task::shell::subtasks::pretty_echo_command;
 use crate::vga_buffer::{TextColor, VGA_WRITER};
 use crate::{print, println};
 
 mod subtasks;
+use alloc::string::ToString;
 use subtasks::CommandRegistry;
 
 pub async fn shell() {
     // All supported 'commands'
     let subtasks: CommandRegistry = subtasks::load();
+    greet().await;
     // unix shell logic (fork -> exec -> wait) minus the fork
     loop {
         print_prompt();
@@ -43,6 +46,12 @@ fn print_prompt() {
     print!("@kalopsia-os");
     VGA_WRITER.lock().change_text_color(TextColor::White);
     print!(" $ ");
+}
+
+async fn greet() {
+    VGA_WRITER.lock().change_text_color(TextColor::Green);
+    pretty_echo_command("kalopsia os".to_string()).await;
+    VGA_WRITER.lock().change_text_color(TextColor::White);
 }
 
 fn parse_command(input: &str) -> (&str, &str) {
