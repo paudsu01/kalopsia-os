@@ -7,7 +7,7 @@
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
     test_main();
-    kalopsia_os::hlt();
+    kalopsia_os::stop();
 }
 
 #[panic_handler]

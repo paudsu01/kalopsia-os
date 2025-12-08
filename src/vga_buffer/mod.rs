@@ -87,8 +87,8 @@ impl VGABuffer {
         Some(value.byte)
     }
 
-    fn move_rows_up(&self) {
-        for row in 1..VGA_ROWS {
+    fn move_rows_up(&self, max_row: u16) {
+        for row in 1..max_row {
             for col in 0..VGA_COLS {
                 // `unwrap` will never fail here
                 let ptr = self.get_ptr(row, col).unwrap();
@@ -114,4 +114,6 @@ impl VGABuffer {
 }
 
 mod writer;
-pub use writer::_print;
+pub use writer::datetime_writer::_datetime_print;
+pub use writer::main_writer::_print;
+pub use writer::timer_writer::_timer_print;

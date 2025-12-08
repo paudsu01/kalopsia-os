@@ -1,4 +1,7 @@
-use crate::{print, println};
+use crate::scheduler::task::keyboard::{scancode_stream::SCANCODE_QUEUE, KEYBOARD_WAKER};
+use crate::scheduler::task::time::DATETIME_WAKER;
+use crate::utils::Port;
+use crate::{println, timer_print};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
@@ -38,7 +41,7 @@ pub fn init_handlers(idt: &mut InterruptDescriptorTable) {
     }
     idt.page_fault.set_handler_fn(page_fault_handler);
     idt[pic::Interrupts::Timer as u8].set_handler_fn(timer_interrupt_handler);
-    idt[pic::Interrupts::Keyboard as u8].set_handler_fn(keyboard::keyboard_interrupt_handler);
+    idt[pic::Interrupts::Keyboard as u8].set_handler_fn(keyboard_interrupt_handler);
 }
 
 /* For all the exception handlers, the x86-interrupt calling convention hides most details of
@@ -71,8 +74,22 @@ extern "x86-interrupt" fn page_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_frame: InterruptStackFrame) {
-    print!(".");
+    timer_print!(".");
+    // wake up `datetime` task to print the current time
+    DATETIME_WAKER.wake();
     PICS.lock().end_of_interrupt(Interrupts::Timer as u8);
 }
 
-mod keyboard;
+pub extern "x86-interrupt" fn keyboard_interrupt_handler(_frame: InterruptStackFrame) {
+    let mut port = Port::new(0x60);
+    let scancode: u8 = port.readb();
+
+    // add to scancode queue
+    if SCANCODE_QUEUE.push(scancode).is_ok() {
+        // wake up any potential pending future
+        KEYBOARD_WAKER.wake();
+    } else {
+        println!("Scancode queue is full! Dropping input");
+    }
+    PICS.lock().end_of_interrupt(Interrupts::Keyboard as u8);
+}
