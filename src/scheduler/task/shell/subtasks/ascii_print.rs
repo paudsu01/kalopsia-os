@@ -1,0 +1,70 @@
+use crate::{print, println};
+use alloc::string::String;
+
+pub async fn pretty_echo_command(args: String) {
+    let input = args.trim();
+    if input.is_empty() {
+        return;
+    }
+
+    // print the message line by line.
+    // Each letter is 5 rows high
+    let font_height = 5;
+    for row in 0..font_height {
+        for char in input.chars() {
+            let bitmap = get_font_bitmap(char);
+            let row_data = bitmap[row];
+
+            // bit 1 means '#'
+            for bit in (0..5).rev() {
+                let is_set = (row_data >> bit) & 1 == 1;
+                if is_set {
+                    // Use a block character or '#' for the "ink"
+                    print!("#");
+                } else {
+                    print!(" ");
+                }
+            }
+            print!("  ");
+        }
+        println!();
+    }
+}
+
+// Each character is 5 bytes. Each byte represents one row (5 bits used).
+// 0b10001 = "#   #"
+// 0b11111 = "#####"
+fn get_font_bitmap(c: char) -> [u8; 5] {
+    match c.to_ascii_uppercase() {
+        'A' => [0b00100, 0b01010, 0b11111, 0b10001, 0b10001],
+        'B' => [0b11110, 0b10001, 0b11110, 0b10001, 0b11110],
+        'C' => [0b01111, 0b10000, 0b10000, 0b10000, 0b01111],
+        'D' => [0b11110, 0b10001, 0b10001, 0b10001, 0b11110],
+        'E' => [0b11111, 0b10000, 0b11110, 0b10000, 0b11111],
+        'F' => [0b11111, 0b10000, 0b11110, 0b10000, 0b10000],
+        'G' => [0b01111, 0b10000, 0b10111, 0b10001, 0b01111],
+        'H' => [0b10001, 0b10001, 0b11111, 0b10001, 0b10001],
+        'I' => [0b01110, 0b00100, 0b00100, 0b00100, 0b01110],
+        'J' => [0b00111, 0b00010, 0b00010, 0b10010, 0b01100],
+        'K' => [0b10001, 0b10010, 0b11100, 0b10010, 0b10001],
+        'L' => [0b10000, 0b10000, 0b10000, 0b10000, 0b11111],
+        'M' => [0b10001, 0b11011, 0b10101, 0b10001, 0b10001],
+        'N' => [0b10001, 0b11001, 0b10101, 0b10011, 0b10001],
+        'O' => [0b01110, 0b10001, 0b10001, 0b10001, 0b01110],
+        'P' => [0b11110, 0b10001, 0b11110, 0b10000, 0b10000],
+        'Q' => [0b01110, 0b10001, 0b10101, 0b10010, 0b01101],
+        'R' => [0b11110, 0b10001, 0b11110, 0b10100, 0b10001],
+        'S' => [0b01111, 0b10000, 0b01110, 0b00001, 0b11110],
+        'T' => [0b11111, 0b00100, 0b00100, 0b00100, 0b00100],
+        'U' => [0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+        'V' => [0b10001, 0b10001, 0b10001, 0b01010, 0b00100],
+        'W' => [0b10001, 0b10001, 0b10101, 0b11011, 0b10001],
+        'X' => [0b10001, 0b01010, 0b00100, 0b01010, 0b10001],
+        'Y' => [0b10001, 0b01010, 0b00100, 0b00100, 0b00100],
+        'Z' => [0b11111, 0b00010, 0b00100, 0b01000, 0b11111],
+
+        ' ' => [0, 0, 0, 0, 0], // Space
+        // Default block for unknown chars
+        _ => [0b11111, 0b10101, 0b11111, 0b10101, 0b11111],
+    }
+}

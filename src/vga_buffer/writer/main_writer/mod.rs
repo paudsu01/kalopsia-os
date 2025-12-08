@@ -54,6 +54,14 @@ impl VGAWriter {
     pub fn change_text_color(&mut self, color: TextColor) {
         self.color = ColorMode::new(color, TextColor::Black, false);
     }
+
+    pub fn clear_screen(&mut self) {
+        for row in 0..VGA_ROWS - 2 {
+            self.buffer.clear_row(row);
+        }
+        self.row = 0;
+        self.col = 0;
+    }
 }
 
 use core::fmt;
